@@ -1,0 +1,11 @@
+# Compiled Matlab files
+*.asv
+*_logfile
+
+# Export files and folders
+xfoil_exports/*.txt
+plots/
+
+# Word files and assignment pdf
+Assignment 3.pdf
+*.docx
