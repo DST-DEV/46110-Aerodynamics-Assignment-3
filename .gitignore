@@ -7,5 +7,5 @@ xfoil_exports/*.txt
 plots/
 
 # Word files and assignment pdf
-Assignment 3.pdf
 *.docx
+*.pdf
