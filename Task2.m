@@ -1,9 +1,18 @@
 clear; clc; 
-% close all;
+close all;
 %% Preparations
+%User inputs
+drag = true;  % Selection whether drag should be considered
+
 % Constants
 g = 3.728;  % Gravity on Mars [m/s^2]
 rho = 20e-3;  % Atmosphere density on Mars [kg/m^3]
+
+% Assumptions
+C_d0 = .02;  % Drag coefficient
+omega = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
+c = .12;  % Mean chord length [m]
+gamma = 1.15;  % Power correction factor
 
 % Original Ingenuity design
 R_ing = .6;  % Propeller radius of Ingenuity [m]
@@ -11,7 +20,7 @@ m_tot_ing = 1.8;  % Total weight of Ingenuity [kg]
 m_mot_ing = .25/2;  % Weight of each propulsion motor in Ingenuity
 m_fuse_ing = .3;  % Weight of the fuselage of Ingenuity [kg]
 m_tot_wo_fuse_ing = m_tot_ing - m_fuse_ing;  % Weight of Ingenuity without the fuselage [kg]
-P_prop_ing = 163;  % Total required power for hover [W] 
+P_prop_ing = 170;  % Total required power for hover [W] 
 %-------------- NOTE: P_prop_ing is a guess!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 % Known parameters of the new design
@@ -20,7 +29,7 @@ C_bat = 20;  % Battery capacity [Wh]
 % Parameter variations
 N_prop = [2, 4];  % Number of propellers
 N_bld = 2:8;  % Number of blades of each propeller
-L_bld = .35:.05:1.25;  % Length of blades [m]
+L_bld = .6:.05:1.25;  % Length of blades [m]
 A_prop = N_prop' .* pi .* L_bld.^2;  % Total area of all propellers
 
 % Masses of new design
@@ -31,6 +40,9 @@ m_pl = 2;  % Weight of the payload
 
 m_base = m_prop + m_res + m_bat;  % Base weight of the new design (WITHOUT payload)
 
+% Drag power
+P_0 = 1/8 * rho * c * N_prop' .* reshape(N_bld, 1, 1, []) .* C_d0 .* omega.^3 .* L_bld.^4;
+
 %% Determine total mass
 % Note: This calculation does not consider the payload (just the weight of
 % the drone itself)
@@ -39,7 +51,12 @@ m_base = m_prop + m_res + m_bat;  % Base weight of the new design (WITHOUT paylo
 m_fuse = m_fuse_ing .* m_base/m_tot_wo_fuse_ing;  
 
 % Initial guess for the weight of the propulsion motors [kg]
-P = ((m_base + m_fuse).*g) .^ 1.5 ./ (2 * rho * A_prop);
+P_ideal = ((m_base + m_fuse).*g) .^ 1.5 ./ (2 * rho * A_prop);
+if drag
+    P = gamma * P_ideal + P_0;
+else
+    P = gamma * P_ideal;
+end
 m_mot = m_mot_ing * P / P_prop_ing;
 
 m_tot_0 = m_tot_ing;
@@ -52,10 +69,15 @@ while ~all(abs(m_tot-m_tot_0)<.05,'all')  % Hella inefficient but does the job
     m_tot_0 = m_tot;
 
     % Calculate the required power
-    P = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
+    P_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
+    if drag
+        P = gamma * P_ideal + P_0;
+    else
+        P = gamma * P_ideal;
+    end
 
     % Calculate mass of motors
-    m_mot = m_mot_ing * P / P_prop_ing;
+    m_mot = m_mot_ing .* P / P_prop_ing;
     
     % Calculate mass of fuselage
     m_fuse = m_fuse_ing .* (m_base + m_mot) ./ m_tot_wo_fuse_ing;  
@@ -66,13 +88,23 @@ end
 %% Post calculations
 
 % Calculate the required power and mass of rotors one last time
-P_base = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
-m_mot = m_mot_ing * P / P_prop_ing;
+P_base_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
+if drag
+    P_base = gamma * P_base_ideal + P_0;
+else
+    P_base = gamma * P_base_ideal;
+end
+m_mot = m_mot_ing .* P / P_prop_ing;
 
 % Calculate final total mass (with payload) and power consumption with
 % payload
 m_tot = m_base + m_fuse + m_mot + m_pl;
-P_w_pl = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
+P_w_pl_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
+if drag
+    P_w_pl = gamma * P_w_pl_ideal + P_0;
+else
+    P_w_pl = gamma * P_w_pl_ideal;
+end
 
 % Calculate flight time [min]
 t_flight = C_bat./P_w_pl .* 60;
@@ -157,8 +189,8 @@ end
 
 % Selection of values
 N_prop_sel = 4;
-N_bld_sel = 4;
-L_bld_sel = .5;
+N_bld_sel = 2;
+L_bld_sel = 1;
 
 i_sel = [find(N_prop == N_prop_sel), find(L_bld == L_bld_sel), ...
     find(N_bld == N_bld_sel)]; %Index of the selected values
