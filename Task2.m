@@ -38,7 +38,7 @@ m_res = 1;  % Weight of computer and residual components [kg]
 m_bat = .5; % Weight of the battery pack [kg]
 m_pl = 2;  % Weight of the payload
 
-m_base = m_prop + m_res + m_bat;  % Base weight of the new design (WITHOUT payload)
+m_base = m_prop + m_res + m_bat + m_pl;  % Base weight of the new design (WITH payload)
 
 % Drag power
 P_0 = 1/8 * rho * c * N_prop' .* reshape(N_bld, 1, 1, []) .* C_d0 .* omega.^3 .* L_bld.^4;
@@ -98,7 +98,8 @@ m_mot = m_mot_ing .* P / P_prop_ing;
 
 % Calculate final total mass (with payload) and power consumption with
 % payload
-m_tot = m_base + m_fuse + m_mot + m_pl;
+m_tot = m_base + m_fuse + m_mot;
+P_wo_pl_ideal = ((m_tot - m_pl).*g) .^ 1.5 ./ (2 * rho * A_prop);
 P_w_pl_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
 if drag
     P_w_pl = gamma * P_w_pl_ideal + P_0;
@@ -111,10 +112,10 @@ t_flight = C_bat./P_w_pl .* 60;
 
 %% Plot findings
 
-ax_m = plot_blade_designs (m_tot, N_bld, L_bld, 1,...
+ax_m = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, 1,...
                            "Total mass excl. payload", "m [kg]");
-ax_P_base = plot_blade_designs (P_base, N_bld, L_bld, 2,...
-                                "Power for hovering (without payload)", ...
+ax_P_base = plot_blade_designs (P_wo_pl_ideal, N_bld, L_bld, 2,...
+                                "Power for hovering (without payload and drag)", ...
                                  "P [W]");
 ax_P_w_pl = plot_blade_designs (P_w_pl, N_bld, L_bld, 3,...
                                 "Power for hovering (with payload)", ...
