@@ -1,7 +1,7 @@
 clear; clc;
 close all;
 
-%% Task1 – Power consumed by each rotor in hover 
+%% Task 1 – Power consumed by each rotor in hover (Mars)
 % Constants
 g = 3.728;                  % Mars gravity [m/s^2]
 rho = 20e-3;                % Mars atmospheric density [kg/m^3]
