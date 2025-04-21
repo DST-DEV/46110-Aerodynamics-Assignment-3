@@ -3,6 +3,7 @@ close all;
 %% Preparations
 %User inputs
 drag = true;  % Selection whether drag should be considered
+savefigs = true;
 
 % Constants
 g = 3.728;  % Gravity on Mars [m/s^2]
@@ -111,20 +112,31 @@ end
 t_flight = C_bat./P_w_pl .* 60;
 
 %% Plot findings
+fig_index = 1;
+% if savefigs
+%     [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
+%         fig_index, "T2_m_wo_pl", "$m$ [kg]", savefigs);
+%     [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
+%         L_bld, fig_index, "T2_P_base", "$P$ [W]", savefigs);
+%     [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+%         fig_index, "T2_P_w_pl", "$P$ [W]", savefigs);
+%     [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
+%         fig_index, "T2_t_flight_w_pl", "$t$ [min]", savefigs);
+% else
+%     [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
+%         fig_index, "Total mass excl. payload", "$m$ [kg]", savefigs);
+%     [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
+%         L_bld, fig_index, "Power for hovering (without payload and drag)", ...
+%         "$P$ [W]", savefigs);
+%     [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+%         fig_index, "Power for hovering (with payload)", ...
+%         "$P$ [W]", savefigs);
+%     [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
+%         fig_index, "Flight time with payload", "$t$ [min]", savefigs);
+% end
 
-ax_m = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, 1,...
-                           "Total mass excl. payload", "m [kg]");
-ax_P_base = plot_blade_designs (P_wo_pl_ideal, N_bld, L_bld, 2,...
-                                "Power for hovering (without payload and drag)", ...
-                                 "P [W]");
-ax_P_w_pl = plot_blade_designs (P_w_pl, N_bld, L_bld, 3,...
-                                "Power for hovering (with payload)", ...
-                                "P [W]");
-ax_t = plot_blade_designs (t_flight, N_bld, L_bld, 4,...
-                           "Flight time with payload", "t [min]");
-
-function axes = plot_blade_designs(data, numBlades, bladeLengths, fig,...
-    figTitle, colorbarLabel)
+function [axes, fig_index] = plot_blade_designs(data, numBlades, ...
+        bladeLengths, fig_index, figTitle, colorbarLabel, savefig)
     % Validate dimensions
     if ndims(data) ~= 3 || size(data, 1) ~= 2
         error('Data must be a 2 x m x n array.');
@@ -134,13 +146,11 @@ function axes = plot_blade_designs(data, numBlades, bladeLengths, fig,...
         error('Vector dimensions must match the 2nd and 3rd dimensions of data.');
     end
 
-    if nargin < 4
-        figTitle = '';  % Default to empty if not provided
-    end
-
     if nargin < 5
         colorbarLabel = '';  % Default to empty if not provided
     end
+    
+    if nargin < 6, savefig = false; end
 
     % Create meshgrid for plotting
     [X, Y] = meshgrid(bladeLengths, numBlades);
@@ -150,36 +160,63 @@ function axes = plot_blade_designs(data, numBlades, bladeLengths, fig,...
     quadcopterData = squeeze(data(2, :, :));
 
     % Plotting
-    figure(fig); grid on;
-    set(gcf, 'Position', [100, 100, 800, 400]);
+
     cmap = "abyss";
+    figure(fig_index); grid on;
+    fig_index = fig_index + 1;
 
     % Double Propeller Design
-    ax1 = subplot(1,2,1);
+    if savefig
+        ax1 = gca;
+        set(gcf, 'Position', [100, 100, 400, 400]);
+    else
+        ax1 = subplot(1,2,1);
+        set(gcf, 'Position', [100, 100, 800, 400]);
+    end
+    
     contourf(ax1, X, Y,doublePropellerData', 'LineColor', 'none');
     colormap(ax1, cmap);
     cb1 = colorbar(ax1);
-    ylabel(cb1, colorbarLabel);
+    ylabel(cb1, colorbarLabel, 'Interpreter', 'latex');
     xlabel(ax1, 'Blade Length [m]', 'Interpreter', 'latex');
     ylabel(ax1, 'Number of Blades', 'Interpreter', 'latex');
-    title(ax1, 'Double Propeller Design', 'Interpreter', 'latex');
     axis square;
     set(ax1, 'TickLabelInterpreter', 'latex');
+    set(cb1, 'TickLabelInterpreter', 'latex');
+
+    if savefig
+        exportgraphics(gcf, [figTitle + '_tandem.pdf'], 'ContentType', 'vector', ...
+            'BackgroundColor', 'none', 'Resolution', 300);
+    else
+        title(ax1, 'Tandem Design', 'Interpreter', 'latex');
+    end
 
     % Quadcopter Design
-    ax2 = subplot(1,2,2);
+    if savefig
+        figure(fig_index); grid on;
+        fig_index = fig_index + 1;
+        ax2 = gca;
+        set(gcf, 'Position', [500, 100, 400, 400]);
+    else
+        ax2 = subplot(1,2,2);
+    end
+    
     contourf(ax2, X, Y, quadcopterData', 'LineColor', 'none');
     colormap(ax2, cmap);
     cb2 = colorbar(ax2);
-    ylabel(cb2, colorbarLabel);
+    ylabel(cb2, colorbarLabel, 'Interpreter', 'latex');
     xlabel(ax2, 'Blade Length [m]', 'Interpreter', 'latex');
     ylabel(ax2, 'Number of Blades', 'Interpreter', 'latex');
-    title(ax2, 'Quadcopter Design', 'Interpreter', 'latex');
     axis square;
     set(ax2, 'TickLabelInterpreter', 'latex');
+    set(cb2, 'TickLabelInterpreter', 'latex');
 
     % Optional figure title
-    if ~isempty(figTitle)
+    if savefig
+        exportgraphics(gcf, [figTitle + '_quad.pdf'], 'ContentType', 'vector', ...
+            'BackgroundColor', 'none', 'Resolution', 300);
+    else
+        title(ax2, 'Quadcopter Design', 'Interpreter', 'latex');
         sgtitle(figTitle, 'Interpreter', 'latex');
     end
 
@@ -217,12 +254,16 @@ mass_labels = {sprintf('Rotors: %.1f g', m_sel(1)*1e3), ...
                sprintf('Computer and other components: %.1f g', m_sel(5)*1e3), ...
                };
 
-figure(5); 
-set(gcf, 'Position', [100, 100, 1000, 800]);
-pc = piechart(m_sel, mass_labels);
+figure(fig_index); 
+set(gcf, 'Position', [100, 100, 1000, 450]);
+pc = piechart(m_sel, mass_labels, 'FontSize', 15, 'FontName', 'times');
 pc.LabelStyle="name";
 % pc.ColorOrder = abyss(numel(m_sel));
 pc.ColorOrder = slanCM('blues', numel(m_sel));
+if savefigs
+        exportgraphics(gcf, 'T2_mass_dist.pdf', 'ContentType', 'vector', ...
+            'BackgroundColor', 'none', 'Resolution', 300);
+end
 
 %% Add design selection to pts
 
