@@ -1,33 +1,32 @@
 clear; clc;
 close all;
 
-%% Task 1 – Power consumed by each rotor in hover (Mars)
-% Constants
-g = 3.728;                  % Mars gravity [m/s^2]
-rho = 20e-3;                % Mars atmospheric density [kg/m^3]
-C_d0 = 0.02;                % Profile drag coefficient
-omega = 2800 * 2 * pi / 60; % Rotor angular velocity [rad/s]
-gamma = 1.15;               % Power correction factor 
-c = 0.12;                   % Estimated average blade chord [m]
-Nb = 2;                     % Number of blades per rotor
-R = 0.6;                    % Rotor radius [m]
-A = pi * R^2;               % Rotor disk area [m^2]
+%% Task 1 – Power per rotor in hover (Ingenuity, Mars)
 
-% Total helicopter parameters
-m_total = 1.8;              % Ingenuity mass [kg]
-T_rotor = (m_total * g) / 2;  % Thrust per rotor [N]
+% === Constants ===
+g = 3.728;                      % Mars gravity [m/s^2]
+rho = 20e-3;                    % Mars atmospheric density [kg/m^3]
+C_d0 = 0.02;                    % Profile drag coefficient
+omega = 2800 * 2 * pi / 60;     % Angular velocity [rad/s]
+c = 0.1;                        % Mean blade chord [m]
+Nb = 2;                         % Number of blades per rotor
+R = 0.6;                        % Rotor radius [m]
+m = 1.8;                        % Total mass [kg]
+gamma = 1.15;                   % Correction factor
 
-% Rotor solidity (used in profile drag power)
-sigma = Nb * c / (pi * R);  % Rotor solidity [-]
+% === Area===
+A = pi * R^2;                   % Rotor disk area [m^2]
 
-% Induced power (from momentum theory)
-P_induced = (T_rotor^1.5) / sqrt(2 * rho * A);
+% === Thrust ===
+T = (m * g)/2;                  % Thrust per rotor [N]
 
-% Profile power (from blade-element theory approximation)
-P_profile = (1/8) * rho * C_d0 * omega^3 * R^5 * sigma;
 
-% Total power per rotor (including correction factor)
-P_per_rotor = gamma * P_induced + P_profile;
+% === Power Calculations ===
+P_ideal = T^(1.5) / sqrt(2 * rho * A);                      % Ideal hover power [W]
+P_0 = (1/8) * rho * c * Nb * C_d0 * omega^3 * R^4;          % Profile drag power [W]
+P_total = gamma * P_ideal + P_0;                            % Total power per rotor [W]
 
-%% Output
-fprintf('Estimated power consumed by each rotor: %.2f W\n', P_per_rotor);
+% === Output ===
+fprintf('Ideal hover power per rotor       : %.2f W\n', P_ideal);
+fprintf('Profile drag power per rotor      : %.2f W\n', P_0);
+fprintf('Total hover power per rotor       : %.2f W\n', P_total);
