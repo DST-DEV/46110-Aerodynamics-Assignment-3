@@ -3,7 +3,7 @@ close all;
 %% Preparations
 %User inputs
 drag = true;  % Selection whether drag should be considered
-savefigs = true;
+savefigs = false;
 
 % Constants
 g = 3.728;  % Gravity on Mars [m/s^2]
@@ -11,8 +11,8 @@ rho = 20e-3;  % Atmosphere density on Mars [kg/m^3]
 
 % Assumptions
 C_d0 = .02;  % Drag coefficient
-omega = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
-c = .12;  % Mean chord length [m]
+omega_ing = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
+c = .10;  % Mean chord length [m]
 gamma = 1.15;  % Power correction factor
 
 % Original Ingenuity design
@@ -21,17 +21,17 @@ m_tot_ing = 1.8;  % Total weight of Ingenuity [kg]
 m_mot_ing = .25/2;  % Weight of each propulsion motor in Ingenuity
 m_fuse_ing = .3;  % Weight of the fuselage of Ingenuity [kg]
 m_tot_wo_fuse_ing = m_tot_ing - m_fuse_ing;  % Weight of Ingenuity without the fuselage [kg]
-P_prop_ing = 170;  % Total required power for hover [W] 
-%-------------- NOTE: P_prop_ing is a guess!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+P_prop_ing = 143;  % Total required power for hover [W] 
 
 % Known parameters of the new design
 C_bat = 20;  % Battery capacity [Wh]
 
 % Parameter variations
 N_prop = [2, 4];  % Number of propellers
-N_bld = 2:8;  % Number of blades of each propeller
+N_bld = 2:4;  % Number of blades of each propeller
 L_bld = .6:.05:1.25;  % Length of blades [m]
 A_prop = N_prop' .* pi .* L_bld.^2;  % Total area of all propellers
+omega = omega_ing .* R_ing ./ L_bld;  % Rotational speed
 
 % Masses of new design
 m_prop = 70e-3/4 .* N_prop' .* L_bld/R_ing .* reshape(N_bld, 1, 1, []);
@@ -113,27 +113,27 @@ t_flight = C_bat./P_w_pl .* 60;
 
 %% Plot findings
 fig_index = 1;
-% if savefigs
-%     [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
-%         fig_index, "T2_m_wo_pl", "$m$ [kg]", savefigs);
-%     [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
-%         L_bld, fig_index, "T2_P_base", "$P$ [W]", savefigs);
-%     [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
-%         fig_index, "T2_P_w_pl", "$P$ [W]", savefigs);
-%     [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
-%         fig_index, "T2_t_flight_w_pl", "$t$ [min]", savefigs);
-% else
-%     [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
-%         fig_index, "Total mass excl. payload", "$m$ [kg]", savefigs);
-%     [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
-%         L_bld, fig_index, "Power for hovering (without payload and drag)", ...
-%         "$P$ [W]", savefigs);
-%     [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
-%         fig_index, "Power for hovering (with payload)", ...
-%         "$P$ [W]", savefigs);
-%     [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
-%         fig_index, "Flight time with payload", "$t$ [min]", savefigs);
-% end
+if savefigs
+    [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
+        fig_index, "T2_m_wo_pl", "$m$ [kg]", savefigs);
+    [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
+        L_bld, fig_index, "T2_P_base", "$P$ [W]", savefigs);
+    [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+        fig_index, "T2_P_w_pl", "$P$ [W]", savefigs);
+    [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
+        fig_index, "T2_t_flight_w_pl", "$t$ [min]", savefigs);
+else
+    [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
+        fig_index, "Total mass excl. payload", "$m$ [kg]", savefigs);
+    [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
+        L_bld, fig_index, "Power for hovering (without payload and drag)", ...
+        "$P$ [W]", savefigs);
+    [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+        fig_index, "Power for hovering (with payload)", ...
+        "$P$ [W]", savefigs);
+    [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
+        fig_index, "Flight time with payload", "$t$ [min]", savefigs);
+end
 
 function [axes, fig_index] = plot_blade_designs(data, numBlades, ...
         bladeLengths, fig_index, figTitle, colorbarLabel, savefig)
