@@ -4,7 +4,7 @@ close all;
 %% Task 1 – Power per rotor in hover (Ingenuity, Mars)
 
 % === Constants ===
-g = 3.728;                      % Mars gravity [m/s^2]
+g = 3.73;                      % Mars gravity [m/s^2]
 rho = 20e-3;                    % Mars atmospheric density [kg/m^3]
 C_d0 = 0.02;                    % Profile drag coefficient
 omega = 2800 * 2 * pi / 60;     % Angular velocity [rad/s]
