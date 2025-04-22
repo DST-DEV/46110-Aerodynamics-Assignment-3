@@ -3,25 +3,35 @@ close all;
 %% Preparations
 %User inputs
 drag = true;  % Selection whether drag should be considered
-savefigs = false;
+savefigs = true;
 
 % Constants
 g = 3.728;  % Gravity on Mars [m/s^2]
-rho = 20e-3;  % Atmosphere density on Mars [kg/m^3]
-
-% Assumptions
-C_d0 = .02;  % Drag coefficient
-omega_ing = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
-c = .10;  % Mean chord length [m]
-gamma = 1.15;  % Power correction factor
+rho = 14e-3;  % Atmosphere density on Mars [kg/m^3]
 
 % Original Ingenuity design
 R_ing = .6;  % Propeller radius of Ingenuity [m]
+omega_ing = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
+r_ing = [0.0908, 0.1158, 0.1551, 0.2000, 0.2472, 0.2950, 0.3429, 0.3903, ...
+    0.4369, 0.4826, 0.5271, 0.5704, 0.6121, 0.6523, 0.6908, 0.7274, 0.7621, ...
+    0.7947, 0.8252, 0.8535, 0.8794, 0.9030, 0.9241, 0.9427, 0.9588, 0.9722, ...
+    0.9830, 0.9912, 0.9966, 1.0000] .* R_ing;
+dr_ing = r_ing - [0, r_ing(1:end-1)];
+c_ing = [0.0506, 0.0631, 0.0967, 0.1407, 0.1758, 0.1968, 0.2021, 0.1968, ...
+    0.1863, 0.1743, 0.1627, 0.1530, 0.1446, 0.1375, 0.1314, 0.1259, 0.1209, ...
+    0.1160, 0.1111, 0.1058, 0.1001, 0.0935, 0.0860 ,0.0775, 0.0679, 0.0573, ...
+    0.0460, 0.0341, 0.0223, 0.0123] .* R_ing;
+
 m_tot_ing = 1.8;  % Total weight of Ingenuity [kg]
 m_mot_ing = .25/2;  % Weight of each propulsion motor in Ingenuity
 m_fuse_ing = .3;  % Weight of the fuselage of Ingenuity [kg]
 m_tot_wo_fuse_ing = m_tot_ing - m_fuse_ing;  % Weight of Ingenuity without the fuselage [kg]
-P_prop_ing = 143;  % Total required power for hover [W] 
+P_prop_ing = 123;  % Total required power for hover [W] 
+
+% Assumptions
+C_d0 = .02;  % Drag coefficient
+c = mean(c_ing, Weights=dr_ing);  % Mean chord length [m]
+gamma = 1.15;  % Power correction factor
 
 % Known parameters of the new design
 C_bat = 20;  % Battery capacity [Wh]
@@ -45,8 +55,6 @@ m_base = m_prop + m_res + m_bat + m_pl;  % Base weight of the new design (WITH p
 P_0 = 1/8 * rho * c * N_prop' .* reshape(N_bld, 1, 1, []) .* C_d0 .* omega.^3 .* L_bld.^4;
 
 %% Determine total mass
-% Note: This calculation does not consider the payload (just the weight of
-% the drone itself)
 
 % Initial guess for the weight of the fuselage [kg]
 m_fuse = m_fuse_ing .* m_base/m_tot_wo_fuse_ing;  
@@ -114,29 +122,29 @@ t_flight = C_bat./P_w_pl .* 60;
 %% Plot findings
 fig_index = 1;
 if savefigs
-    [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
+    [fig_m, ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
         fig_index, "T2_m_wo_pl", "$m$ [kg]", savefigs);
-    [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
+    [fig_base, ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
         L_bld, fig_index, "T2_P_base", "$P$ [W]", savefigs);
-    [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+    [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
         fig_index, "T2_P_w_pl", "$P$ [W]", savefigs);
-    [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
+    [fig_t, ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
         fig_index, "T2_t_flight_w_pl", "$t$ [min]", savefigs);
 else
-    [ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
+    [fig_m, ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
         fig_index, "Total mass excl. payload", "$m$ [kg]", savefigs);
-    [ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
+    [fig_base, ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
         L_bld, fig_index, "Power for hovering (without payload and drag)", ...
         "$P$ [W]", savefigs);
-    [ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+    [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
         fig_index, "Power for hovering (with payload)", ...
         "$P$ [W]", savefigs);
-    [ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
+    [fig_t, ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
         fig_index, "Flight time with payload", "$t$ [min]", savefigs);
 end
 
-function [axes, fig_index] = plot_blade_designs(data, numBlades, ...
-        bladeLengths, fig_index, figTitle, colorbarLabel, savefig)
+function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
+        bladeLengths, fig_index, figTitle, ylabel_txt, savefig)
     % Validate dimensions
     if ndims(data) ~= 3 || size(data, 1) ~= 2
         error('Data must be a 2 x m x n array.');
@@ -147,13 +155,18 @@ function [axes, fig_index] = plot_blade_designs(data, numBlades, ...
     end
 
     if nargin < 5
-        colorbarLabel = '';  % Default to empty if not provided
+        ylabel_txt = '';  % Default to empty if not provided
     end
     
     if nargin < 6, savefig = false; end
 
-    % Create meshgrid for plotting
-    [X, Y] = meshgrid(bladeLengths, numBlades);
+    cols = ["#0072BD", "#D95319", "#EDB120", "#77AC30", "#80B3FF"];  % Colors of the lines
+    markers = ["none", "none", "none", "none", "none"];  % Markers for the four methods
+    ms = [4.5, 4.5, 4.5, 4.5, 4.5];  % Marker size for the plots of the four methods
+    lw = [1.5, 1.5, 1.5, 1.5, 1.5];  % Linewidth for the lines of the four methods
+    ax_col = [0.2, 0.2, 0.2];  % Color of accented axes
+    ax_lw = 1.5;  % Line width of accented axes
+    fs = 16;  % Plot font size
 
     % Extract data for each design
     doublePropellerData = squeeze(data(1, :, :));
@@ -162,65 +175,66 @@ function [axes, fig_index] = plot_blade_designs(data, numBlades, ...
     % Plotting
 
     cmap = "abyss";
-    figure(fig_index); grid on;
+    fig = figure(fig_index); grid on;
     fig_index = fig_index + 1;
-
-    % Double Propeller Design
-    if savefig
-        ax1 = gca;
-        set(gcf, 'Position', [100, 100, 400, 400]);
-    else
-        ax1 = subplot(1,2,1);
-        set(gcf, 'Position', [100, 100, 800, 400]);
-    end
+    set(gcf, 'Position', [100, 100, 800, 400]);
+    cla; hold on; grid on;
+    ax = gca;
     
-    contourf(ax1, X, Y,doublePropellerData', 'LineColor', 'none');
-    colormap(ax1, cmap);
-    cb1 = colorbar(ax1);
-    ylabel(cb1, colorbarLabel, 'Interpreter', 'latex');
-    xlabel(ax1, 'Blade Length [m]', 'Interpreter', 'latex');
-    ylabel(ax1, 'Number of Blades', 'Interpreter', 'latex');
-    axis square;
-    set(ax1, 'TickLabelInterpreter', 'latex');
-    set(cb1, 'TickLabelInterpreter', 'latex');
+    for i = 1:numel(numBlades)
+        lines_tandem(i) = plot(bladeLengths, ...
+                               doublePropellerData(:,i), ...
+                               LineWidth=lw(i), Marker=markers(i), ...
+                               MarkerSize=ms(i), LineStyle='-',...
+                               Color=cols(i), ...
+                               DisplayName=sprintf('$N_{bld}=%d$', ...
+                                                   numBlades(i)));
+        lines_quad(i) = plot(bladeLengths, ...
+                             quadcopterData(:,i), ...
+                             LineWidth=lw(i), Marker=markers(i), ...
+                             MarkerSize=ms(i), LineStyle='--', ...
+                             Color=cols(i), ...
+                             DisplayName=sprintf('$N_{bld}=%d$', ...
+                                                 numBlades(i)));
+    end
+
+    % Plot labels
+    set(gcf,'Color','White');
+    set(ax,'FontSize',fs);
+    ylabel(ylabel_txt, 'Interpreter', 'latex');
+    xlabel('$L_{bld}$ [m]', 'Interpreter', 'latex');
+    set(ax, 'TickLabelInterpreter', 'latex');
+    xlim(ax, [min(bladeLengths), max(bladeLengths) + .03]);
+
+    lgd1 = legend(lines_tandem, 'Interpreter', 'latex', ...
+                  'Location', 'northeastoutside');
+    lgd1.Title.String = 'Tandem Design';
+    
+    % Force graphics update to get position
+    drawnow;
+    
+    % Get legend 1 position [left bottom width height]
+    pos1 = lgd1.Position;
+    
+    % Calculate position for second legend just below
+    spacing = 0.01; % small gap between legends
+    new_bottom = pos1(2) - pos1(4) - spacing;
+
+    % Create a second, invisible axes for the second legend
+    ax2 = axes('Position', get(gca, 'Position'), 'Color', 'none');
+    h = plot(nan, nan, '--r', nan, nan, '--b'); % dummy lines
+    lgd2 = legend(ax2, lines_quad, 'Interpreter', 'latex');
+    lgd2.Title.String = 'Quadcopter Design';
+    lgd2.Position = [pos1(1), new_bottom, pos1(3), pos1(4)];
+    axis off; % hide the dummy axes
+    set(gca, 'FontSize', fs);        % Axis ticks and labels
 
     if savefig
-        exportgraphics(gcf, [figTitle + '_tandem.pdf'], 'ContentType', 'vector', ...
+        exportgraphics(gcf, [figTitle + '.pdf'], 'ContentType', 'vector', ...
             'BackgroundColor', 'none', 'Resolution', 300);
     else
-        title(ax1, 'Tandem Design', 'Interpreter', 'latex');
+        title(gca, figTitle, 'Interpreter', 'latex');
     end
-
-    % Quadcopter Design
-    if savefig
-        figure(fig_index); grid on;
-        fig_index = fig_index + 1;
-        ax2 = gca;
-        set(gcf, 'Position', [500, 100, 400, 400]);
-    else
-        ax2 = subplot(1,2,2);
-    end
-    
-    contourf(ax2, X, Y, quadcopterData', 'LineColor', 'none');
-    colormap(ax2, cmap);
-    cb2 = colorbar(ax2);
-    ylabel(cb2, colorbarLabel, 'Interpreter', 'latex');
-    xlabel(ax2, 'Blade Length [m]', 'Interpreter', 'latex');
-    ylabel(ax2, 'Number of Blades', 'Interpreter', 'latex');
-    axis square;
-    set(ax2, 'TickLabelInterpreter', 'latex');
-    set(cb2, 'TickLabelInterpreter', 'latex');
-
-    % Optional figure title
-    if savefig
-        exportgraphics(gcf, [figTitle + '_quad.pdf'], 'ContentType', 'vector', ...
-            'BackgroundColor', 'none', 'Resolution', 300);
-    else
-        title(ax2, 'Quadcopter Design', 'Interpreter', 'latex');
-        sgtitle(figTitle, 'Interpreter', 'latex');
-    end
-
-    axes = {ax1, ax2};
 end
 
 %% Select design
@@ -267,10 +281,10 @@ end
 
 %% Add design selection to pts
 
-draw_crosshair(ax_m{i_sel(1)}, L_bld_sel, N_bld_sel)
-draw_crosshair(ax_P_base{i_sel(1)}, L_bld_sel, N_bld_sel)
-draw_crosshair(ax_P_w_pl{i_sel(1)}, L_bld_sel, N_bld_sel)
-draw_crosshair(ax_t{i_sel(1)}, L_bld_sel, N_bld_sel)
+% draw_crosshair(ax_m{i_sel(1)}, L_bld_sel, N_bld_sel)
+% draw_crosshair(ax_P_base{i_sel(1)}, L_bld_sel, N_bld_sel)
+% draw_crosshair(ax_P_w_pl{i_sel(1)}, L_bld_sel, N_bld_sel)
+% draw_crosshair(ax_t{i_sel(1)}, L_bld_sel, N_bld_sel)
 
 function draw_crosshair(ax, x, y, style, width, color)
     % Set default values if not provided
