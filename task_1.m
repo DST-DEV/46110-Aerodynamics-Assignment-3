@@ -34,14 +34,14 @@ v2 = solution(2);
 % Calculate thrusts and powers
 T1 = 2 * rho * A * v1^2;
 T2 = 2 * rho * A * (v1 + v2) * v2;
-P1_ideal = T1 * v1;
-P2_ideal = T2 * (v1 + v2);
+%P1_ideal = T1 * v1;
+%P2_ideal = T2 * (v1 + v2);
 
 
 
 % Total Power Calculations  
-%P1_ideal = T1^(1.5) / sqrt(2 * rho * A);                      % Ideal hover power [W] for rotor1
-%P2_ideal = T2^(1.5) / sqrt(2 * rho * A);                      % Ideal hover power [W] for rotor2
+P1_ideal = T1^(1.5) / sqrt(2 * rho * A);                      % Ideal hover power [W] for rotor1
+P2_ideal = T2^(1.5) / sqrt(2 * rho * A);                      % Ideal hover power [W] for rotor2
 P_0 = (1/8) * rho * c * Nb * C_d0 * omega^3 * R^4;             % Profile drag power [W]
 P1_total = gamma * P1_ideal + P_0; 
 P2_total = gamma * P2_ideal + P_0;
