@@ -4,6 +4,8 @@ close all;
 %User inputs
 drag = true;  % Selection whether drag should be considered
 savefigs = true;
+res_fld = 'results';
+plot_fld = 'plots';
 
 % Constants
 g = 3.728;  % Gravity on Mars [m/s^2]
@@ -123,28 +125,28 @@ t_flight = C_bat./P_w_pl .* 60;
 fig_index = 1;
 if savefigs
     [fig_m, ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
-        fig_index, "T2_m_wo_pl", "$m$ [kg]", savefigs);
+        fig_index, "T2_m_wo_pl", "$m$ [kg]", plot_fld, savefigs);
     [fig_base, ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
-        L_bld, fig_index, "T2_P_base", "$P$ [W]", savefigs);
+        L_bld, fig_index, "T2_P_base", "$P$ [W]", plot_fld, savefigs);
     [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
-        fig_index, "T2_P_w_pl", "$P$ [W]", savefigs);
+        fig_index, "T2_P_w_pl", "$P$ [W]", plot_fld, savefigs);
     [fig_t, ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
-        fig_index, "T2_t_flight_w_pl", "$t$ [min]", savefigs);
+        fig_index, "T2_t_flight_w_pl", "$t$ [min]", plot_fld, savefigs);
 else
     [fig_m, ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
-        fig_index, "Total mass excl. payload", "$m$ [kg]", savefigs);
+        fig_index, "Total mass excl. payload", "$m$ [kg]", plot_fld, savefigs);
     [fig_base, ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
         L_bld, fig_index, "Power for hovering (without payload and drag)", ...
-        "$P$ [W]", savefigs);
+        "$P$ [W]", plot_fld, savefigs);
     [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
         fig_index, "Power for hovering (with payload)", ...
-        "$P$ [W]", savefigs);
+        "$P$ [W]", plot_fld, savefigs);
     [fig_t, ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
-        fig_index, "Flight time with payload", "$t$ [min]", savefigs);
+        fig_index, "Flight time with payload", "$t$ [min]", plot_fld, savefigs);
 end
 
 function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
-        bladeLengths, fig_index, figTitle, ylabel_txt, savefig)
+        bladeLengths, fig_index, figTitle, ylabel_txt, plot_fld, savefig)
     % Validate dimensions
     if ndims(data) ~= 3 || size(data, 1) ~= 2
         error('Data must be a 2 x m x n array.');
@@ -153,12 +155,8 @@ function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
     if length(numBlades) ~= size(data, 3) || length(bladeLengths) ~= size(data, 2)
         error('Vector dimensions must match the 2nd and 3rd dimensions of data.');
     end
-
-    if nargin < 5
-        ylabel_txt = '';  % Default to empty if not provided
-    end
     
-    if nargin < 6, savefig = false; end
+    if nargin < 8, savefig = false; end
 
     cols = ["#0072BD", "#D95319", "#EDB120", "#77AC30", "#80B3FF"];  % Colors of the lines
     markers = ["none", "none", "none", "none", "none"];  % Markers for the four methods
@@ -230,7 +228,8 @@ function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
     set(gca, 'FontSize', fs);        % Axis ticks and labels
 
     if savefig
-        exportgraphics(gcf, [figTitle + '.pdf'], 'ContentType', 'vector', ...
+        fpath = fullfile(plot_fld, figTitle + '.pdf');
+        exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
             'BackgroundColor', 'none', 'Resolution', 300);
     else
         title(gca, figTitle, 'Interpreter', 'latex');
@@ -259,6 +258,7 @@ m_sel = [m_prop(i_sel(1), i_sel(2), i_sel(3)), ...
          m_fuse(i_sel(1), i_sel(2), i_sel(3)), ...
          m_res];
 m_sel_dist = m_sel / m_tot_sel * 100;
+t_flight_sel = t_flight(i_sel(1), i_sel(2), i_sel(3));
 
 % Prepare labels for pie chart
 mass_labels = {sprintf('Rotors: %.1f g', m_sel(1)*1e3), ...
@@ -268,6 +268,15 @@ mass_labels = {sprintf('Rotors: %.1f g', m_sel(1)*1e3), ...
                sprintf('Computer and other components: %.1f g', m_sel(5)*1e3), ...
                };
 
+% Export results
+res = struct('N_prop', N_prop_sel, 'N_bld', N_bld_sel, ...
+    'L_bld_sel', L_bld_sel, ...
+    'P_base', P_base_sel, 'P_w_pl', P_w_pl_sel, ...
+    'm_tot', m_tot_sel, 'm_prop', m_sel(1), 'm_bat', m_sel(2), ...
+    'm_mot', m_sel(3), 'm_fuse', m_sel(4), 'm_res', m_sel(4), ...
+    't_flight', t_flight_sel);
+save(fullfile(res_fld, 'T2_res.mat'), 'res');
+
 figure(fig_index); 
 set(gcf, 'Position', [100, 100, 1000, 450]);
 pc = piechart(m_sel, mass_labels, 'FontSize', 15, 'FontName', 'times');
@@ -275,29 +284,7 @@ pc.LabelStyle="name";
 % pc.ColorOrder = abyss(numel(m_sel));
 pc.ColorOrder = slanCM('blues', numel(m_sel));
 if savefigs
-        exportgraphics(gcf, 'T2_mass_dist.pdf', 'ContentType', 'vector', ...
-            'BackgroundColor', 'none', 'Resolution', 300);
-end
-
-%% Add design selection to pts
-
-% draw_crosshair(ax_m{i_sel(1)}, L_bld_sel, N_bld_sel)
-% draw_crosshair(ax_P_base{i_sel(1)}, L_bld_sel, N_bld_sel)
-% draw_crosshair(ax_P_w_pl{i_sel(1)}, L_bld_sel, N_bld_sel)
-% draw_crosshair(ax_t{i_sel(1)}, L_bld_sel, N_bld_sel)
-
-function draw_crosshair(ax, x, y, style, width, color)
-    % Set default values if not provided
-    if nargin < 4 || isempty(style), style = '--'; end
-    if nargin < 5 || isempty(width), width = 1; end
-    if nargin < 6 || isempty(color), color = '#c5c5c5'; end
-
-    % Hold the axis
-    hold(ax, 'on');
-
-    % Draw horizontal line
-    yline(ax, y, style, 'LineWidth', width, 'Color', color);
-
-    % Draw vertical line
-    xline(ax, x, style, 'LineWidth', width, 'Color', color);
+    fpath = fullfile(plot_fld, 'T2_mass_dist.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
+        'BackgroundColor', 'none', 'Resolution', 300);
 end
