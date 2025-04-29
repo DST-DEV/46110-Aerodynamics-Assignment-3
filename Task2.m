@@ -26,7 +26,7 @@ m_tot_ing = 1.8;  % Total weight of Ingenuity [kg]
 m_mot_ing = .25/2;  % Weight of each propulsion motor in Ingenuity
 m_fuse_ing = .3;  % Weight of the fuselage of Ingenuity [kg]
 m_tot_wo_fuse_ing = m_tot_ing - m_fuse_ing;  % Weight of Ingenuity without the fuselage [kg]
-P_prop_ing = 123;  % Total required power for hover [W] 
+P_prop_ing = 151.56;  % Total required power for hover [W] 
 
 % Assumptions
 C_d0 = .02;  % Drag coefficient
