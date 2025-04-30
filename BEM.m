@@ -22,10 +22,10 @@ classdef BEM
                 v_i_0 = 0;
             end
             
-            max_iter = 1000;
+            max_iter = 2000;
 
             % Get wing geometry
-            idx_valid = obj.blade.r<.98*obj.blade.R & obj.blade.r>.02*obj.blade.R;
+            idx_valid = obj.blade.r<.99*obj.blade.R & obj.blade.r>.02*obj.blade.R;
             r = obj.blade.r(idx_valid);
             dr = obj.blade.dr(idx_valid);
             c = obj.blade.c(idx_valid);
@@ -37,13 +37,14 @@ classdef BEM
             obj = obj.init_res_int(r, max_iter);
             
             for i = 1:numel(r)
-                v_i = v_i_0;  % Initalize induced wind
+                % v_i = v_i_0;  % Initalize induced wind
+                v_i = 0;  % Initalize induced wind
                 converged = false;
                 n_it = 1;
                 while ~converged && n_it < max_iter
                     V_rel = sqrt((V_c+v_i).^2 + (omega.*r(i)).^2);
                     phi = atan((V_c+v_i)./(omega.*r(i)));
-                    aoa = phi - theta(i);
+                    aoa = theta(i) - phi;
                     
                     % Save results
                     obj.res_int.V_rel(n_it, i) = V_rel; 
@@ -53,8 +54,8 @@ classdef BEM
                     [C_l, C_d] = obj.blade.aero_coeffs(rad2deg(aoa));
 
                     % Calculate normal and tangential force factors
-                    C_n = C_l*cos(phi) + C_d*sin(phi);
-                    C_t = C_l*sin(phi) - C_d*cos(phi);
+                    C_n = C_l*cos(phi) - C_d*sin(phi);
+                    C_t = C_l*sin(phi) + C_d*cos(phi);
 
                     % Save results
                     obj.res_int.C_l(n_it, i) = C_l; 
@@ -84,7 +85,7 @@ classdef BEM
                     dT_mom = 4*pi*obj.rho...
                         .*(V_c + v_i).*v_i.*r(i).*dr(i);  % Eq. 87
                     
-                    v_i = v_i + (dT_BE - F.*dT_mom)./2;  % Eq. 90
+                    v_i = v_i + .4*(dT_BE - F.*dT_mom);  % Eq. 90
 
                     % Save results
                     obj.res_int.dT_BE(n_it, i) = dT_BE;
@@ -93,7 +94,7 @@ classdef BEM
                     
                     
                     dT_diff = abs(dT_BE - F.*dT_mom);
-                    if dT_diff <1e-6
+                    if dT_diff <1e-4
                         converged = true;
                     end
                     obj.res_int.dT_diff(n_it, i) = dT_diff;
@@ -101,7 +102,7 @@ classdef BEM
                     n_it = n_it + 1;
                 end
 
-                if n_it == 1000
+                if n_it == max_iter
                     fprintf('Warning: BEM did not converge for radius r = %.3f\n', r(i));
                 end
 

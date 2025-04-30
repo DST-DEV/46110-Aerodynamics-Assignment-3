@@ -1,18 +1,40 @@
 clear; clc; close all;
 
 savefigs = true;
+res_fld = 'results';
+plot_fld = 'plots';
 
-% Plot settings
+%% Plot settings
 cols = ["#0072BD", "#D95319", "#EDB120", "#77AC30", "#80B3FF"];  % Colors of the lines
 lw = [1, 1, 1, 1, 1];  % Linewidth for the lines of the four methods
 ax_col = [0.2, 0.2, 0.2];  % Color of accented axes
 ax_lw = 1.5;  % Line width of accented axes
 fs = 16;  % Plot font size
 
-%% Preparations
+%% Results from previous taks
+
+% Ingenuity values
+omega_ing = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
+R_ing = .6;  % Propeller radius of Ingenuity [m]
+
+% Constants
+g = 3.728;  % Gravity on Mars [m/s^2]
+rho = 14e-3;  % Atmosphere density on Mars [kg/m^3]
+
+% Task 2
+N_prop = 2;  % Number of propellers
+N_bld = 2;  % Number of blades per rotor
 R = 1;  % Rotor radius [m].
+A_prop = N_prop .* pi .* R.^2;  % Total area of all propellers
+m_tot = 4.846;  % Total mass of the drone (incl. payload) [kg]
+T_req = m_tot*g;  % Total required thrust of the drone  (incl. payload) [N]
+omega = omega_ing .* R_ing ./ R;  % Rotational speed
+
+C_T_req = T_req / (0.5*rho*A_prop*(omega*R)^2);  % Thrust coefficient.
+
+%% Preparations
+
 alpha_D = 5;  % Design angle of attack [°].
-C_T = 3.45;  % Thrust coefficient.
 c_tip = .07;  % Chord at the wing tip [m].
 c_root = .08;  % Chord at the wing root [m].
 r_thres = .3;  % Threshold after which the optimal chord distribution 
@@ -71,18 +93,27 @@ ylim(gca, [0, max(c_full) + .05]);
 legend('Interpreter', 'latex', 'Location', 'northeast');
 
 if savefigs
-    exportgraphics(gcf, 'T5_c_vs_r.pdf', 'ContentType', 'vector', ...
+    fpath = fullfile(plot_fld, 'T5_c_vs_r.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
         'BackgroundColor', 'none', 'Resolution', 300);
 end
 
 %% Calculate twist distribution
-theta_opt = alpha_D + .5./r(r/R>=r_thres) .* sqrt(C_T);
+theta_opt = alpha_D + rad2deg(.5./r(r/R>=r_thres) .* sqrt(C_T_req));
 
 % Calculate chord near root
 theta_root = zeros(1,numel(r(r/R<r_thres))) + theta_opt(1);
 
 %Combine the two curves
 theta = horzcat(theta_root, theta_opt);
+
+% Smoothen out the sharp corner between the two curves
+idx_valid = r<=(r_thres-.05) | r>=(r_thres+.05);
+r_valid = r(idx_valid);
+theta_valid = theta(idx_valid);
+
+theta_full = interp1(r_valid, theta_valid, r, 'spline');
+
 
 % theta_opt_2 = 2*C_T./(sigma.*C_la) + .5*sqrt(C_T) + 2/3*alpha_0 
 
@@ -92,9 +123,9 @@ fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 
 cla; hold on; grid on;
-plot(r/R, theta, LineWidth=lw(1), LineStyle='-', Color='k', ...
+plot(r/R, theta_full, LineWidth=lw(1), LineStyle='-', Color='k', ...
     DisplayName='Wing Design')
-plot (r/R, alpha_D + .5./r .* sqrt(C_T), ...
+plot (r/R, alpha_D + rad2deg(.5./r .* sqrt(C_T_req)), ...
     LineWidth=lw(1), LineStyle='--', Color='k', DisplayName='Ideal twist');
 hold off;
 
@@ -108,7 +139,8 @@ ylim(gca, [min(theta)-1, max(theta) + 1]);
 legend('Interpreter', 'latex', 'Location', 'northeast');
 
 if savefigs
-    exportgraphics(gcf, 'T5_theta_vs_r.pdf', 'ContentType', 'vector', ...
+    fpath = fullfile(plot_fld, 'T5_theta_vs_r.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
         'BackgroundColor', 'none', 'Resolution', 300);
 end
 
@@ -116,18 +148,11 @@ end
 % Airfoil coefficients
 aoa = -180:5:180;
 C_l = 2*pi*deg2rad(aoa+4);
-C_d = 6.2e-6 * aoa.^2;
-
-% Wing parameters
-omega = 2800*2*pi/60 * 0.6/R;  % rotational speed of the drone [rad/s]
-N_b = 2;  % Number of blades per rotor of the drone
-N_rotors = 4;  % Number of rotors of the drone
-m_tot = 5;  % Weight of the drone [kg]
-g = 3.728;  % Gravity on Mars [m/s^2]
+C_d = zeros(1, numel(aoa));
 
 % Create blade and BEM object
 rho = 14e-3;  % Air density [kg/m^3]
-blade = RotorBlade(r, c_full, deg2rad(theta), aoa, C_l, C_d);
+blade = RotorBlade(r, c_full, deg2rad(theta_full), aoa, C_l, C_d);
 bem = BEM(blade, rho);
 
 % Estimate induced wind from momentum theory in hover
@@ -135,12 +160,12 @@ A_rotor = pi * blade.R.^2; % Rotor area [m^2]
 v_h = sqrt(m_tot / (2 * bem.rho * A_rotor));  % Hover velocity [m] 
 
 % Solve BEM
-[bem, P, T] = bem.solve(omega, N_b, 0, v_h);
+[bem, P, T] = bem.solve(omega, N_bld, 0, v_h);
 res_int = bem.res_int;
 res = bem.res;
 
-P_total = N_rotors .* P
-T_total = N_rotors .* T
+P_total = N_prop .* P
+T_total = N_prop .* T
 
 if T < m_tot*g
     disp('Warning: Insufficient thrust');
@@ -155,7 +180,7 @@ fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 cla; hold on; grid on;
 
-plot(res.r/blade.R, dC_T, LineWidth=1.5, LineStyle="-")
+plot(res.r/blade.R, dC_T, LineWidth=lw(1), LineStyle='-', Color='k')
 
 set(gcf,'Color','White');
 set(gca,'FontSize',fs);
@@ -165,7 +190,8 @@ set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
 
 if savefigs
-    exportgraphics(gcf, 'T5_dP_vs_r.pdf', 'ContentType', 'vector', ...
+    fpath = fullfile(plot_fld, 'T5_dC_T_vs_r.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
         'BackgroundColor', 'none', 'Resolution', 300);
 end
 
@@ -175,7 +201,7 @@ fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 cla; hold on; grid on;
 
-plot(res.r/blade.R, res.dP, LineWidth=1.5, LineStyle="-")
+plot(res.r/blade.R, res.dP, LineWidth=lw(1), LineStyle='-', Color='k')
 
 set(gcf,'Color','White');
 set(gca,'FontSize',fs);
@@ -185,7 +211,8 @@ set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
 
 if savefigs
-    exportgraphics(gcf, 'T5_dP_vs_r.pdf', 'ContentType', 'vector', ...
+    fpath = fullfile(plot_fld, 'T5_dP_vs_r.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
         'BackgroundColor', 'none', 'Resolution', 300);
 end
 
@@ -208,3 +235,8 @@ function resizeFigure(fig, width, height)
 
     set(fig, 'Units', oldUnits);   % Restore original units
 end
+
+%% Export results
+
+% res = struct('r', r, 'c', c_full, 'theta', theta_full, '');
+% save(fullfile(res_fld, 'T5_res.mat'), 'res');
