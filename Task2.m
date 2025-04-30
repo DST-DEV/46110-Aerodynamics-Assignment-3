@@ -30,20 +30,20 @@ m_fuse_ing = .3;  % Weight of the fuselage of Ingenuity [kg]
 m_tot_wo_fuse_ing = m_tot_ing - m_fuse_ing;  % Weight of Ingenuity without the fuselage [kg]
 P_prop_ing = 151.56;  % Total required power for hover [W] 
 
-% Assumptions
-C_d0 = .02;  % Drag coefficient
-c = mean(c_ing, Weights=dr_ing);  % Mean chord length [m]
-gamma = 1.15;  % Power correction factor
-
-% Known parameters of the new design
-C_bat = 20;  % Battery capacity [Wh]
-
 % Parameter variations
 N_prop = [2, 4];  % Number of propellers
 N_bld = 2:4;  % Number of blades of each propeller
 L_bld = .6:.05:1.25;  % Length of blades [m]
 A_prop = N_prop' .* pi .* L_bld.^2;  % Total area of all propellers
 omega = omega_ing .* R_ing ./ L_bld;  % Rotational speed
+
+% Assumptions
+C_d0 = .02;  % Drag coefficient
+c = mean(c_ing, Weights=dr_ing)*L_bld./R_ing;  % Mean chord length [m]
+gamma = 1.15;  % Power correction factor
+
+% Known parameters of the new design
+C_bat = 20;  % Battery capacity [Wh]
 
 % Masses of new design
 m_prop = 70e-3/4 .* N_prop' .* L_bld/R_ing .* reshape(N_bld, 1, 1, []);
@@ -54,7 +54,7 @@ m_pl = 2;  % Weight of the payload
 m_base = m_prop + m_res + m_bat + m_pl;  % Base weight of the new design (WITH payload)
 
 % Drag power
-P_0 = 1/8 * rho * c * N_prop' .* reshape(N_bld, 1, 1, []) .* C_d0 .* omega.^3 .* L_bld.^4;
+P_0 = 1/8 * rho .* c .* N_prop' .* reshape(N_bld, 1, 1, []) .* C_d0 .* omega.^3 .* L_bld.^4;
 
 %% Determine total mass
 
