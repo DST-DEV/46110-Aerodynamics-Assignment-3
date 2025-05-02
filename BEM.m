@@ -25,7 +25,8 @@ classdef BEM
             max_iter = 2000;
 
             % Get wing geometry
-            idx_valid = obj.blade.r<.99*obj.blade.R & obj.blade.r>.02*obj.blade.R;
+            idx_valid = obj.blade.r<.999*obj.blade.R & obj.blade.r>0;
+            % idx_valid = obj.blade.r<.99*obj.blade.R & obj.blade.r>.02*obj.blade.R;
             r = obj.blade.r(idx_valid);
             dr = obj.blade.dr(idx_valid);
             c = obj.blade.c(idx_valid);
@@ -34,6 +35,8 @@ classdef BEM
             % Preallocate arrays
             obj = obj.init_res(r);
             obj.res.r = r;
+            obj.res.c = c;
+            obj.res.dr = dr;
             obj = obj.init_res_int(r, max_iter);
             
             for i = 1:numel(r)
@@ -125,11 +128,22 @@ classdef BEM
             % Calculate total thrust and power of the rotor
             dM = .5.*N_b.*obj.rho.*c.*(obj.res.V_rel.^2).*obj.res.C_t.*r;
             dP = dM*omega;
+            % Insert 0 at the upper and lower end of the radii ranges
+            r_full = [0, r, obj.blade.R];
+            dM = [0, dM, 0];
+            dP = [0, dP, 0];
+            dT_BE = [0, obj.res.dT_BE, 0];
+            dT_mom = [0, obj.res.dT_mom, 0];
+
+            % Save results
+            obj.res.r_full = r_full;
             obj.res.dM = dM;
             obj.res.dP = dP;
-
-            P = trapz(dP, r);
-            T = trapz(dT_BE, r);
+            obj.res.dT_BE = dT_BE;
+            obj.res.dT_mom = dT_mom;
+            
+            P = trapz(r_full, dP);
+            T = trapz(r_full, dT_BE);
         end
 
         function obj = init_res_int(obj, r, max_iter)

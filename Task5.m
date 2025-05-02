@@ -22,7 +22,7 @@ g = 3.728;  % Gravity on Mars [m/s^2]
 rho = 14e-3;  % Atmosphere density on Mars [kg/m^3]
 
 % Task 2
-N_prop = 2;  % Number of propellers
+N_prop = 4;  % Number of propellers
 N_bld = 2;  % Number of blades per rotor
 R = 1;  % Rotor radius [m].
 A_prop = N_prop .* pi .* R.^2;  % Total area of all propellers
@@ -44,7 +44,7 @@ c_cut = .18;  % Upper limit for the chord, at which the peak should be cut
 r_tip = .97;  % Threshold after which the wing tip chord should smoothly 
               % transition to zero. Given as a ratio on the blade length.
 
-r = 0:.01:R;  % spanwise coordinates [m]
+r = 0:.01:R;
 
 %% Calculate chord distribution
 % Since the optimal chord distribution increases rapidly close to the root,
@@ -125,10 +125,14 @@ fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 
 cla; hold on; grid on;
-plot(r/R, theta_full, LineWidth=lw(1), LineStyle='-', Color='k', ...
-    DisplayName='Wing Design')
 plot (r/R, alpha_D + rad2deg(.5./r .* sqrt(C_T_req)), ...
     LineWidth=lw(1), LineStyle='--', Color='k', DisplayName='Ideal twist');
+plot(r, theta, LineWidth=lw(2)*1.5, LineStyle='-.', Color=cols(2), ...
+    DisplayName='Raw twist distribution'); 
+plot (r_valid, theta_valid, LineWidth=lw(3)*1.5, LineStyle='-.', Color=cols(3), ...
+    DisplayName='Filtered twist distribution');
+plot(r/R, theta_full, LineWidth=lw(1), LineStyle='-', Color='k', ...
+    DisplayName='Final twist distribution')
 hold off;
 
 set(gcf,'Color','White');
@@ -169,20 +173,20 @@ res = bem.res;
 P_total = N_prop .* P
 T_total = N_prop .* T
 
-if T < m_tot*g
+if T_total < T_req
     disp('Warning: Insufficient thrust');
 end
 
 %% Plot BEM results
 % Plot dC_T
-dC_T = res.dT_BE ./ (bem.rho.*A_rotor.*(omega.*blade.R).^2);
+dC_T = res.dT_BE ./ (.5*bem.rho.*A_rotor.*(omega.*blade.R).^2);
 
 figure(fig_index);
 fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 cla; hold on; grid on;
 
-plot(res.r/blade.R, dC_T, LineWidth=lw(1), LineStyle='-', Color='k')
+plot(res.r_full/blade.R, dC_T, LineWidth=lw(1), LineStyle='-', Color='k')
 
 set(gcf,'Color','White');
 set(gca,'FontSize',fs);
@@ -203,7 +207,7 @@ fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 cla; hold on; grid on;
 
-plot(res.r/blade.R, res.dP, LineWidth=lw(1), LineStyle='-', Color='k')
+plot(res.r_full/blade.R, res.dP, LineWidth=lw(1), LineStyle='-', Color='k')
 
 set(gcf,'Color','White');
 set(gca,'FontSize',fs);
@@ -239,6 +243,5 @@ function resizeFigure(fig, width, height)
 end
 
 %% Export results
-
 % res = struct('r', r, 'c', c_full, 'theta', theta_full, '');
 % save(fullfile(res_fld, 'T5_res.mat'), 'res');
