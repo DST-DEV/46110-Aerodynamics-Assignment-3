@@ -75,12 +75,14 @@ fig_index = fig_index + 1;
 resizeFigure(gcf, 800, 400);
 
 cla; hold on; grid on;
-plot (r/R, c_full, LineWidth=lw(1), LineStyle='-', Color='k', ...
-    DisplayName='Wing design');
 plot (r/R, c_tip ./ r, LineWidth=lw(1), LineStyle='--', Color='k', ...
     DisplayName='Ideal chord');
-% plot(r, c, LineWidth=lw(2), LineStyle='-', Color=cols(2), DisplayName='unsmoothed'); 
-% plot (r_valid, c_valid, LineWidth=lw(3), LineStyle='-', Color=cols(3), DisplayName='filtered');
+plot(r, c, LineWidth=lw(2)*1.5, LineStyle='-.', Color=cols(2), ...
+    DisplayName='Raw chord distribution'); 
+plot (r_valid, c_valid, LineWidth=lw(3)*1.5, LineStyle='-.', Color=cols(3), ...
+    DisplayName='Filtered chord distribution');
+plot (r/R, c_full, LineWidth=lw(1), LineStyle='-', Color='k', ...
+    DisplayName='Final chord distribution');
 hold off;
 
 set(gcf,'Color','White');
