@@ -33,8 +33,8 @@ classdef RotorBlade
         end
 
         function [C_l, C_d] = aero_coeffs(obj, aoa)
-            C_l = interp1(obj.aoa, obj.C_l, aoa);
-            C_d = interp1(obj.aoa, obj.C_d, aoa);
+            C_l = interp1(obj.aoa, obj.C_l, aoa,'spline','extrap');
+            C_d = interp1(obj.aoa, obj.C_d, aoa,'spline','extrap');
         end
     end
 end

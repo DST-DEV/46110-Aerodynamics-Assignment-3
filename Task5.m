@@ -1,5 +1,4 @@
 clear; clc; close all;
-
 savefigs = true;
 res_fld = 'results';
 plot_fld = 'plots';
@@ -12,6 +11,9 @@ ax_lw = 1.5;  % Line width of accented axes
 fs = 16;  % Plot font size
 
 %% Results from previous taks
+
+% Airfoil coefficients
+[alpha, C_l, C_d] = load_airfoil_data('AG14_14k.txt');
 
 % Ingenuity values
 omega_ing = 2800 * 2*pi / 60;  % Rotational speed [rad/s]
@@ -26,7 +28,7 @@ N_prop = 4;  % Number of propellers
 N_bld = 2;  % Number of blades per rotor
 R = 1;  % Rotor radius [m].
 A_prop = N_prop .* pi .* R.^2;  % Total area of all propellers
-m_tot = 4.846;  % Total mass of the drone (incl. payload) [kg]
+m_tot = 4.93;  % Total mass of the drone (incl. payload) [kg]
 T_req = m_tot*g;  % Total required thrust of the drone  (incl. payload) [N]
 omega = omega_ing .* R_ing ./ R;  % Rotational speed
 
@@ -34,7 +36,11 @@ C_T_req = T_req / (0.5*rho*A_prop*(omega*R)^2);  % Thrust coefficient.
 
 %% Preparations
 
-alpha_D = 5;  % Design angle of attack [°].
+C_d_C_l = C_d ./ C_l;
+[min_cdcl, i_design] = min(C_d_C_l);
+alpha_D_opt_eff = alpha(i_design);  % Design angle of attack for optimal efficiency[°].
+% alpha_D = alpha_D_opt_eff;  % Design angle of attack [°].
+alpha_D = 3;  % Design angle of attack [°].
 c_tip = .07;  % Chord at the wing tip [m].
 c_root = .08;  % Chord at the wing root [m].
 r_thres = .3;  % Threshold after which the optimal chord distribution 
@@ -116,9 +122,6 @@ theta_valid = theta(idx_valid);
 
 theta_full = interp1(r_valid, theta_valid, r, 'spline');
 
-
-% theta_opt_2 = 2*C_T./(sigma.*C_la) + .5*sqrt(C_T) + 2/3*alpha_0 
-
 % Plot twist distribution
 figure(fig_index);
 fig_index = fig_index + 1;
@@ -151,14 +154,13 @@ if savefigs
 end
 
 %% Solve BEM
-% Airfoil coefficients
-aoa = -180:5:180;
-C_l = 2*pi*deg2rad(aoa+4);
-C_d = zeros(1, numel(aoa));
+% alpha = -180:5:180;
+% C_l = 2*pi*deg2rad(alpha+4);
+% C_d = zeros(1, numel(alpha));
 
 % Create blade and BEM object
 rho = 14e-3;  % Air density [kg/m^3]
-blade = RotorBlade(r, c_full, deg2rad(theta_full), aoa, C_l, C_d);
+blade = RotorBlade(r, c_full, deg2rad(theta_full), alpha, C_l, C_d);
 bem = BEM(blade, rho);
 
 % Estimate induced wind from momentum theory in hover
