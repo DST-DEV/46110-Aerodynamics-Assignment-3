@@ -2,7 +2,6 @@ clear; clc;
 close all;
 %% Preparations
 %User inputs
-drag = true;  % Selection whether drag should be considered
 savefigs = true;
 res_fld = 'results';
 plot_fld = 'plots';
@@ -23,6 +22,7 @@ c_ing = [0.0506, 0.0631, 0.0967, 0.1407, 0.1758, 0.1968, 0.2021, 0.1968, ...
     0.1863, 0.1743, 0.1627, 0.1530, 0.1446, 0.1375, 0.1314, 0.1259, 0.1209, ...
     0.1160, 0.1111, 0.1058, 0.1001, 0.0935, 0.0860 ,0.0775, 0.0679, 0.0573, ...
     0.0460, 0.0341, 0.0223, 0.0123] .* R_ing;
+c_mean_ing = mean(c_ing, Weights=dr_ing);
 
 m_tot_ing = 1.8;  % Total weight of Ingenuity [kg]
 m_mot_ing = .25/2;  % Weight of each propulsion motor in Ingenuity
@@ -33,112 +33,106 @@ P_prop_ing = 151.56;  % Total required power for hover [W]
 % Parameter variations
 N_prop = [2, 4];  % Number of propellers
 N_bld = 2:4;  % Number of blades of each propeller
-L_bld = .6:.05:1.25;  % Length of blades [m]
-A_prop = N_prop' .* pi .* L_bld.^2;  % Total area of all propellers
-omega = omega_ing .* R_ing ./ L_bld;  % Rotational speed
+L_bld = .4:.05:1.25;  % Length of blades [m]
 
 % Assumptions
 C_d0 = .02;  % Drag coefficient
-c = mean(c_ing, Weights=dr_ing)*L_bld./R_ing;  % Mean chord length [m]
 gamma = 1.15;  % Power correction factor
 
 % Known parameters of the new design
 C_bat = 20;  % Battery capacity [Wh]
 
 % Masses of new design
-m_prop = 70e-3/4 .* N_prop' .* L_bld/R_ing .* reshape(N_bld, 1, 1, []);
 m_res = 1;  % Weight of computer and residual components [kg]
 m_bat = .5; % Weight of the battery pack [kg]
 m_pl = 2;  % Weight of the payload
 
-m_base = m_prop + m_res + m_bat + m_pl;  % Base weight of the new design (WITH payload)
-
-% Drag power
-P_0 = 1/8 * rho .* c .* N_prop' .* reshape(N_bld, 1, 1, []) .* C_d0 .* omega.^3 .* L_bld.^4;
-
 %% Determine total mass
 
-% Initial guess for the weight of the fuselage [kg]
-m_fuse = m_fuse_ing .* m_base/m_tot_wo_fuse_ing;  
+init_arr = zeros(numel(N_prop), numel(L_bld), numel(N_bld));
+res = struct();
+res.m_tot = init_arr;
+res.P_tot = init_arr;
+res.c = init_arr;
+res.omega = init_arr;
+res.m_blade = init_arr;
+res.m_prop = init_arr;
+res.m_mot_tot = init_arr;
+res.m_fuse = init_arr;
+res.m_base = init_arr;
+for idx_p = 1:numel(N_prop)
+    n_prop = N_prop(idx_p);
 
-% Initial guess for the weight of the propulsion motors [kg]
-P_ideal = ((m_base + m_fuse).*g) .^ 1.5 ./ (2 * rho * A_prop);
-if drag
-    P = gamma * P_ideal + P_0;
-else
-    P = gamma * P_ideal;
-end
-m_mot = m_mot_ing * P / P_prop_ing;
+    for idx_l = 1:numel(L_bld)
+        l_bld = L_bld(idx_l);
+        A_rotor = pi .* l_bld.^2;  % Area of one propeller
+        c = c_mean_ing * l_bld / R_ing;
+        omega = omega_ing .* R_ing ./ l_bld;  % Rotational speed
 
-m_tot_0 = m_tot_ing;
-m_tot = m_base + m_fuse + m_mot;
+        for idx_b = 1:numel(N_bld)
+            n_bld = N_bld(idx_b);
+            m_blade = 70e-3/4 .* l_bld/R_ing * n_bld;
+            m_prop = n_prop * m_blade;
+            P_0 = (1/8) * rho * c * n_bld * C_d0 * omega^3 * l_bld^4;
 
-i = 0;
-while ~all(abs(m_tot-m_tot_0)<.05,'all')  % Hella inefficient but does the job
-    i = i+1;
-    %Update total mass from previous iteration
-    m_tot_0 = m_tot;
+            converged = false;
+            m_mot_tot = 0;
+            i = 0;
+            while ~converged
+                m_mot_tot_0 = m_mot_tot;
 
-    % Calculate the required power
-    P_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
-    if drag
-        P = gamma * P_ideal + P_0;
-    else
-        P = gamma * P_ideal;
+                m_base = m_prop + m_res + m_bat + m_pl;  % Base weight of the new design (WITH payload)
+                m_fuse = m_fuse_ing .* (m_base + m_mot_tot) ./ m_tot_wo_fuse_ing;  
+                m_tot = m_base + m_mot_tot + m_fuse;
+                
+                T_total = m_tot * g;
+                T_rotor = T_total / n_prop;
+                
+                P_ideal = (T_rotor)^(3/2) / sqrt(2 * rho * A_rotor);
+                P_rotor = gamma * P_ideal + P_0;
+                P_tot = n_prop * P_rotor;
+                
+                m_mot = m_mot_ing .* P_rotor / (P_prop_ing/2);
+                m_mot_tot = n_prop * m_mot;
+                
+                if abs(m_mot_tot - m_mot_tot_0)<1e-4
+                    converged = true;
+                end
+            end
+            
+            res.P_tot(idx_p, idx_l, idx_b) = P_tot;
+            res.P_0(idx_p, idx_l, idx_b) = P_0;
+            res.m_tot(idx_p, idx_l, idx_b) = m_tot;
+            res.c(idx_p, idx_l, idx_b) = c;
+            res.omega(idx_p, idx_l, idx_b) = omega;
+            res.m_blade(idx_p, idx_l, idx_b) = m_blade;
+            res.m_prop(idx_p, idx_l, idx_b) = m_prop;
+            res.m_mot_tot(idx_p, idx_l, idx_b) = m_mot_tot;
+            res.m_fuse(idx_p, idx_l, idx_b) = m_fuse;
+            res.m_base(idx_p, idx_l, idx_b) = m_base;
+        end
     end
-
-    % Calculate mass of motors
-    m_mot = m_mot_ing .* P / P_prop_ing;
-    
-    % Calculate mass of fuselage
-    m_fuse = m_fuse_ing .* (m_base + m_mot) ./ m_tot_wo_fuse_ing;  
-
-    % Calculate new total mass
-    m_tot = m_base + m_fuse + m_mot;
-end
-%% Post calculations
-
-% Calculate the required power and mass of rotors one last time
-P_base_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
-if drag
-    P_base = gamma * P_base_ideal + P_0;
-else
-    P_base = gamma * P_base_ideal;
-end
-m_mot = m_mot_ing .* P / P_prop_ing;
-
-% Calculate final total mass (with payload) and power consumption with
-% payload
-m_tot = m_base + m_fuse + m_mot;
-P_wo_pl_ideal = ((m_tot - m_pl).*g) .^ 1.5 ./ (2 * rho * A_prop);
-P_w_pl_ideal = (m_tot.*g) .^ 1.5 ./ (2 * rho * A_prop);
-if drag
-    P_w_pl = gamma * P_w_pl_ideal + P_0;
-else
-    P_w_pl = gamma * P_w_pl_ideal;
 end
 
 % Calculate flight time [min]
-t_flight = C_bat./P_w_pl .* 60;
+t_flight = C_bat./res.P_tot .* 60;
+res.t_flight = t_flight;
+save(fullfile(res_fld, 'T2_res_full.mat'), 'res');
 
 %% Plot findings
 fig_index = 1;
 if savefigs
-    [fig_m, ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
-        fig_index, "T2_m_wo_pl", "$m$ [kg]", plot_fld, savefigs);
-    [fig_base, ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
-        L_bld, fig_index, "T2_P_base", "$P$ [W]", plot_fld, savefigs);
-    [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+    [fig_m_w_pl, ax_m_w_pl, fig_index] = plot_blade_designs (res.m_tot, N_bld, L_bld, ...
+        fig_index, "T2_m_w_pl", "$m$ [kg]", plot_fld, savefigs);
+    [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (res.P_tot, N_bld, L_bld, ...
         fig_index, "T2_P_w_pl", "$P$ [W]", plot_fld, savefigs);
     [fig_t, ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
         fig_index, "T2_t_flight_w_pl", "$t$ [min]", plot_fld, savefigs);
 else
-    [fig_m, ax_m, fig_index] = plot_blade_designs (m_tot-m_pl, N_bld, L_bld, ...
-        fig_index, "Total mass excl. payload", "$m$ [kg]", plot_fld, savefigs);
-    [fig_base, ax_P_base, fig_index] = plot_blade_designs (P_wo_pl_ideal, N_bld, ...
-        L_bld, fig_index, "Power for hovering (without payload and drag)", ...
-        "$P$ [W]", plot_fld, savefigs);
-    [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (P_w_pl, N_bld, L_bld, ...
+    [fig_m_w_pl, ax_m_w_pl, fig_index] = plot_blade_designs (res.m_tot, N_bld, L_bld, ...
+        fig_index, "Total mass", ...
+        "$m$ [kg]", plot_fld, savefigs);
+    [fig_P_w_pl, ax_P_w_pl, fig_index] = plot_blade_designs (res.P_tot, N_bld, L_bld, ...
         fig_index, "Power for hovering (with payload)", ...
         "$P$ [W]", plot_fld, savefigs);
     [fig_t, ax_t, fig_index] = plot_blade_designs (t_flight, N_bld, L_bld, ...
@@ -206,7 +200,7 @@ function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
 
     lgd1 = legend(lines_tandem, 'Interpreter', 'latex', ...
                   'Location', 'northeastoutside');
-    lgd1.Title.String = 'Tandem Design';
+    lgd1.Title.String = 'Bicopter';
     
     % Force graphics update to get position
     drawnow;
@@ -222,7 +216,7 @@ function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
     ax2 = axes('Position', get(gca, 'Position'), 'Color', 'none');
     h = plot(nan, nan, '--r', nan, nan, '--b'); % dummy lines
     lgd2 = legend(ax2, lines_quad, 'Interpreter', 'latex');
-    lgd2.Title.String = 'Quadcopter Design';
+    lgd2.Title.String = 'Quadcopter';
     lgd2.Position = [pos1(1), new_bottom, pos1(3), pos1(4)];
     axis off; % hide the dummy axes
     set(gca, 'FontSize', fs);        % Axis ticks and labels
@@ -236,31 +230,57 @@ function [fig, ax, fig_index] = plot_blade_designs(data, numBlades, ...
     end
 end
 
+%% Find optimum flight time for both designs
+res_opt = struct();
+
+[t_max_dual, i_opt_l_dual] = max(squeeze(t_flight(1,:,:)));
+[t_max_dual, i_opt_n_dual] = max(t_max_dual);
+i_opt_l_dual = i_opt_l_dual(i_opt_n_dual);
+
+[t_max_quad, i_opt_l_quad] = max(squeeze(t_flight(2,:,:)));
+[t_max_quad, i_opt_n_quad] = max(t_max_quad);
+i_opt_l_quad = i_opt_l_quad(i_opt_n_quad);
+
+res_opt.t_flight = [t_max_dual, t_max_quad];
+res_opt.N_bld = [N_bld(i_opt_n_dual), N_bld(i_opt_n_quad)];
+res_opt.L_bld = [L_bld(i_opt_l_dual), L_bld(i_opt_l_quad)];
+res_opt.c = [res.c(1, i_opt_l_dual, i_opt_n_dual),
+             res.c(2, i_opt_l_quad, i_opt_n_quad)];
+res_opt.omega = [res.omega(1, i_opt_l_dual, i_opt_n_dual),
+                 res.omega(2, i_opt_l_quad, i_opt_n_quad)];
+res_opt.m_tot = [res.m_tot(1, i_opt_l_dual, i_opt_n_dual),
+                 res.m_tot(2, i_opt_l_quad, i_opt_n_quad)];
+res_opt.P = [res.P_tot(1, i_opt_l_dual, i_opt_n_dual),
+             res.P_tot(2, i_opt_l_quad, i_opt_n_quad)];
+
+save(fullfile(res_fld, 'T2_res_opt.mat'), 'res_opt');
+
 %% Select design
 
 % Selection of values
 N_prop_sel = 4;
 N_bld_sel = 2;
-L_bld_sel = 1;
+L_bld_sel = 0.7;
 
-i_sel = [find(N_prop == N_prop_sel), find(L_bld == L_bld_sel), ...
+i_sel = [find(N_prop == N_prop_sel), find(round(L_bld,2) == 0.7), ...
     find(N_bld == N_bld_sel)]; %Index of the selected values
 
-% Retrieve required power for hovering for selected parameters
-P_wo_pl_ideal_sel = P_wo_pl_ideal(i_sel(1), i_sel(2), i_sel(3));
-P_0_sel = P_0(i_sel(1), i_sel(2), i_sel(3));
-P_wo_pl_sel = gamma * P_wo_pl_ideal_sel + P_0_sel;
-P_w_pl_ideal_sel = P_w_pl_ideal(i_sel(1), i_sel(2), i_sel(3));
-P_w_pl_sel = P_w_pl(i_sel(1), i_sel(2), i_sel(3));
-
 % Retrieve masses for selected parameters
-m_tot_sel = m_tot(i_sel(1), i_sel(2), i_sel(3));
-m_sel = [m_prop(i_sel(1), i_sel(2), i_sel(3)), ...
+m_tot_sel = res.m_tot(i_sel(1), i_sel(2), i_sel(3));
+m_sel = [res.m_prop(i_sel(1), i_sel(2), i_sel(3)), ...
          m_bat, ...
-         m_mot(i_sel(1), i_sel(2), i_sel(3)), ...
-         m_fuse(i_sel(1), i_sel(2), i_sel(3)), ...
+         res.m_mot_tot(i_sel(1), i_sel(2), i_sel(3)), ...
+         res.m_fuse(i_sel(1), i_sel(2), i_sel(3)), ...
          m_res];
 m_sel_dist = m_sel / m_tot_sel * 100;
+
+% Retrieve required power for hovering for selected parameters
+P_wo_pl_ideal_sel = N_prop_sel * ((m_tot_sel-m_pl)*g)^(3/2) / sqrt(2 * rho * A_rotor);
+P_0_sel = res.P_0(i_sel(1), i_sel(2), i_sel(3));
+P_wo_pl_sel = gamma * P_wo_pl_ideal_sel + P_0_sel;
+P_w_pl_sel = res.P_tot(i_sel(1), i_sel(2), i_sel(3));
+P_w_pl_ideal_sel = N_prop_sel * (m_tot_sel*g)^(3/2) / sqrt(2 * rho * A_rotor);
+
 t_flight_sel = t_flight(i_sel(1), i_sel(2), i_sel(3));
 
 % Prepare labels for pie chart
@@ -272,7 +292,7 @@ mass_labels = {sprintf('Rotors: %.1f g', m_sel(1)*1e3), ...
                };
 
 % Export results
-res = struct('N_propellers', N_prop_sel, 'N_blades', N_bld_sel, ...
+res_sel = struct('N_propellers', N_prop_sel, 'N_blades', N_bld_sel, ...
     'L_blades', L_bld_sel, ...
     'P_wo_pl_ideal', P_wo_pl_ideal_sel, ...
     'P_wo_pl', P_wo_pl_sel, 'P_drag', P_0_sel, ...
@@ -280,7 +300,7 @@ res = struct('N_propellers', N_prop_sel, 'N_blades', N_bld_sel, ...
     'm_total', m_tot_sel, 'm_propellers', m_sel(1), 'm_batteries', m_sel(2), ...
     'm_motors', m_sel(3), 'm_fuselage', m_sel(4), 'm_computers', m_sel(4), ...
     't_flight', t_flight_sel);
-save(fullfile(res_fld, 'T2_res.mat'), 'res');
+save(fullfile(res_fld, 'T2_res_sel.mat'), 'res_sel');
 
 figure(fig_index); 
 set(gcf, 'Position', [100, 100, 1000, 450]);
