@@ -6,12 +6,12 @@ plot_fld = 'plots';
 rerun_opt = false;
 
 % Optimization variations
-c_tip = .05:.005:.09;
-c_root = linspace(.06, .1, numel(c_tip));
+c_tip = .02:.0025:.08;
+c_root = c_tip+ .01;
 r_thres = .3;
 r_tip = .97;
 
-alpha_D = -1:.5:4;
+alpha_D = -1:.25:7;
 
 %% Plot settings
 cols = ["#0072BD", "#D95319", "#EDB120", "#77AC30", "#80B3FF"];  % Colors of the lines
@@ -35,11 +35,11 @@ if rerun_opt
     [res_opt, res] = optimizer.optimize(r, alpha_D, c_tip, c_root, ...
         r_thres, r_tip);
     
-    save(fullfile(res_fld, 'T5_opt_res_full.mat'), 'res');
-    save(fullfile(res_fld, 'T5_opt_res_final.mat'), 'res_opt');
+    save(fullfile(res_fld, 'T5_opt_res.mat'), 'res', 'res_opt');
 else
-    res = load(fullfile(res_fld, 'T5_opt_res_full.mat')).res;
-    res_opt = load(fullfile(res_fld, 'T5_opt_res_final.mat')).res_opt;
+    res_file = load(fullfile(res_fld, 'T5_opt_res.mat'));
+    res = res_file.res;
+    res_opt = res_file.res_opt;
 
     r = res.r;
     c_tip = res.c_tip;
@@ -51,6 +51,29 @@ end
 
 %% Plot c_tip vs alpha_D as contour plot
 
+% Interpolate valeus where required thrust is fulfilled
+contourData  = contourc(c_tip, alpha_D, res.T', ...
+    [optimizer.T_req, optimizer.T_req]);
+
+% Parse the contour matrix format
+idx = 1;
+xy_points = [];
+
+while idx < size(contourData, 2)
+    level = contourData(1, idx);
+    nPoints = contourData(2, idx);
+    
+    % Get the x and y coordinates of the contour
+    x_vals = contourData(1, idx+1 : idx+nPoints);
+    y_vals = contourData(2, idx+1 : idx+nPoints);
+    
+    % Store or process them
+    xy_points = [xy_points; x_vals(:), y_vals(:)];
+    
+    % Advance the index
+    idx = idx + nPoints + 1;
+end
+
 % Create meshgrid for plotting
 [X, Y] = meshgrid(c_tip, alpha_D);
 
@@ -61,6 +84,16 @@ fig_index = fig_index + 1;
 set(gcf, 'Position', [100, 100, 400, 400]);
 
 contourf(gca, X, Y, res.P', 'LineColor', 'none');
+
+hold on;
+plot(xy_points(:,1), xy_points(:,2), LineWidth=lw(2)*1.5, ...
+    LineStyle='-', Color=cols(2));  % Plot required thrust line
+
+    % Plot found maximum
+    yline(gca, res_opt.alpha_D, '--', 'LineWidth', 1, 'Color', '#c5c5c5');
+    xline(gca, res_opt.c_tip, '--', 'LineWidth', 1, 'Color', '#c5c5c5');
+hold off;
+
 colormap(gca, cmap);
 cb = colorbar(gca);
 ylabel(cb, 'Total power [W]', 'Interpreter', 'latex');
@@ -71,7 +104,8 @@ set(gca, 'TickLabelInterpreter', 'latex');
 set(cb, 'TickLabelInterpreter', 'latex');
 
 if savefigs
-    exportgraphics(gcf, 'T5_power_opt_contourf.pdf', 'ContentType', 'vector', ...
+    fpath = fullfile(plot_fld, 'T5_power_opt_contourf.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
         'BackgroundColor', 'none', 'Resolution', 300);
 end
 
@@ -82,6 +116,16 @@ fig_index = fig_index + 1;
 set(gcf, 'Position', [100, 100, 400, 400]);
 
 contourf(gca, X, Y, res.T', 'LineColor', 'none');
+
+hold on;
+plot(xy_points(:,1), xy_points(:,2), LineWidth=lw(2)*1.5, ...
+    LineStyle='-', Color=cols(2));  % Plot required thrust line
+
+    % Plot found maximum
+    yline(gca, res_opt.alpha_D, '--', 'LineWidth', 1, 'Color', '#c5c5c5');
+    xline(gca, res_opt.c_tip, '--', 'LineWidth', 1, 'Color', '#c5c5c5');
+hold off;
+
 colormap(gca, cmap);
 cb = colorbar(gca);
 ylabel(cb, 'Total thrust [N]', 'Interpreter', 'latex');
@@ -92,7 +136,8 @@ set(gca, 'TickLabelInterpreter', 'latex');
 set(cb, 'TickLabelInterpreter', 'latex');
 
 if savefigs
-    exportgraphics(gcf, 'T5_thrust_opt_contourf.pdf', 'ContentType', 'vector', ...
+    fpath = fullfile(plot_fld, 'T5_thrust_opt_contourf.pdf');
+    exportgraphics(gcf, fpath, 'ContentType', 'vector', ...
         'BackgroundColor', 'none', 'Resolution', 300);
 end
 
@@ -137,8 +182,10 @@ ylabel('$c$ [m]', 'Interpreter', 'latex');
 xlabel('$r/R$', 'Interpreter', 'latex');
 set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
+xticks(0:.1:1);
 ylim(gca, [0, max(res_opt.c) + .05]);
 legend('Interpreter', 'latex', 'Location', 'northeast');
+xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_c_vs_r.pdf');
@@ -183,8 +230,10 @@ ylabel('$\theta$ [$^{\circ}$]', 'Interpreter', 'latex');
 xlabel('$r/R$', 'Interpreter', 'latex');
 set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
+xticks(0:.1:1);
 ylim(gca, [min(res_opt.theta)-1, max(res_opt.theta) + 1]);
 legend('Interpreter', 'latex', 'Location', 'northeast');
+xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_theta_vs_r.pdf');
@@ -208,6 +257,8 @@ ylabel('$dC_T$', 'Interpreter', 'latex');
 xlabel('$r/R$', 'Interpreter', 'latex');
 set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
+xticks(0:.1:1);
+xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_dC_T_vs_r.pdf');
@@ -229,6 +280,8 @@ ylabel('$dP$ [W/m]', 'Interpreter', 'latex');
 xlabel('$r/R$', 'Interpreter', 'latex');
 set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
+xticks(0:.1:1);
+xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_dP_vs_r.pdf');
@@ -248,4 +301,27 @@ function resizeFigure(fig, width, height)
     set(fig, 'Position', pos);     % Apply new size
 
     set(fig, 'Units', oldUnits);   % Restore original units
+end
+
+
+targetThrust = 18;
+contourData  = contourc(c_tip, alpha_D, res.T', [targetThrust, targetThrust]);
+
+% Parse the contour matrix format
+idx = 1;
+xy_points = [];
+
+while idx < size(contourData, 2)
+    level = contourData(1, idx);
+    nPoints = contourData(2, idx);
+    
+    % Get the x and y coordinates of the contour
+    x_vals = contourData(1, idx+1 : idx+nPoints);
+    y_vals = contourData(2, idx+1 : idx+nPoints);
+    
+    % Store or process them
+    xy_points = [xy_points; x_vals(:), y_vals(:)];
+    
+    % Advance the index
+    idx = idx + nPoints + 1;
 end
