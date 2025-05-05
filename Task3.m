@@ -1,5 +1,3 @@
-%% Task 3 – Extended Battery Life for Quadcopter Design
-
 clear; clc; close all;
 
 % Load results from Task 2
