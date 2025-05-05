@@ -66,7 +66,7 @@ classdef ShapeOptimizer
                 r_thres = .3;
             end
 
-            c_cut = 2.5 * c_tip;  % Chord at which to cut the peak to smoothen the shape
+            % c_cut = 3 * c_tip;  % Chord at which to cut the peak to smoothen the shape
 
             % Since the optimal chord distribution increases rapidly close to the root,
             % it it ony used for r/R > r_thres
@@ -79,7 +79,8 @@ classdef ShapeOptimizer
             c_raw = horzcat(c_root, c_opt);
             
             % Smoothen out the sharp peak between the two curves and the wing tip
-            idx_valid = c_raw<=c_cut & r./obj.R<=r_tip;
+            % idx_valid = c_raw<=c_cut & r./obj.R<=r_tip;
+            idx_valid = (r/obj.R<=(r_thres-.1) | r/obj.R>=(r_thres+.1)) & r./obj.R<=r_tip;
             r_valid = r(idx_valid);
             c_valid = c_raw(idx_valid);
             if r_tip<1
@@ -104,7 +105,7 @@ classdef ShapeOptimizer
             theta_raw = horzcat(theta_root, theta_opt);
             
             % Smoothen out the sharp corner between the two curves
-            idx_valid = r<=(r_thres-.05) | r>=(r_thres+.05);
+            idx_valid = r/obj.R<=(r_thres-.05) | r/obj.R>=(r_thres+.05);
             r_valid = r(idx_valid);
             theta_valid = theta_raw(idx_valid);
             

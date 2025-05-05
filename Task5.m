@@ -3,11 +3,11 @@ clear; clc; close all;
 savefigs = true;
 res_fld = 'results';
 plot_fld = 'plots';
-rerun_opt = false;
+rerun_opt = true;
 
 % Optimization variations
-c_tip = .02:.0025:.08;
-c_root = c_tip+ .01;
+c_tip = .02:.0025:.09;
+c_root = c_tip + .03;
 r_thres = .3;
 r_tip = .97;
 
@@ -25,8 +25,8 @@ fig_index = 1;
 % Results from Task 2
 N_prop = 4;  % Number of propellers
 N_bld = 2;  % Number of blades per rotor
-R = 1;  % Rotor radius [m].
-m_tot = 4.93;  % Total mass of the drone (incl. payload) [kg]
+R = .7;  % Rotor radius [m].
+m_tot = 4.97;  % Total mass of the drone (incl. payload) [kg]
 
 r = 0:.01:R;
 
@@ -45,7 +45,7 @@ else
     c_tip = res.c_tip;
     c_root = res.c_root;
     r_thres = res.r_thres;
-    r_tip = res.r_thres;
+    r_tip = res.r_tip;
     alpha_D = res.alpha_D;
 end
 
@@ -152,7 +152,7 @@ c = horzcat(c_root, c_opt);
 
 % Smoothen out the sharp peak between the two curves and the wing tip
 c_cut = 2.5*res_opt.c_tip;
-idx_valid = c<=c_cut & r./R<=res_opt.r_tip;
+idx_valid = (r/R<=(r_thres-.1) | r/R>=(r_thres+.1)) & r./R<=r_tip;
 r_valid = r(idx_valid);
 c_valid = c(idx_valid);
 if r_tip<1
@@ -168,9 +168,9 @@ resizeFigure(gcf, 800, 400);
 cla; hold on; grid on;
 plot (r/R, res_opt.c_tip ./ r, LineWidth=lw(1), LineStyle='--', Color='k', ...
     DisplayName='Ideal chord');
-plot(r, c, LineWidth=lw(2)*1.5, LineStyle='-.', Color=cols(2), ...
+plot(r/R, c, LineWidth=lw(2)*1.5, LineStyle='-.', Color=cols(2), ...
     DisplayName='Raw chord distribution'); 
-plot (r_valid, c_valid, LineWidth=lw(3)*1.5, LineStyle='-.', Color=cols(3), ...
+plot (r_valid/R, c_valid, LineWidth=lw(3)*1.5, LineStyle='-.', Color=cols(3), ...
     DisplayName='Filtered chord distribution');
 plot (r/R, squeeze(res_opt.c), LineWidth=lw(1), LineStyle='-', Color='k', ...
     DisplayName='Final chord distribution');
@@ -185,7 +185,8 @@ xlim(gca, [0, 1]);
 xticks(0:.1:1);
 ylim(gca, [0, max(res_opt.c) + .05]);
 legend('Interpreter', 'latex', 'Location', 'northeast');
-xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
+xline(gca, r_thres, ':', 'LineWidth', 1.2, 'Color', '#1E1E21' ...
+    ,'HandleVisibility','off');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_c_vs_r.pdf');
@@ -204,7 +205,7 @@ theta_root = zeros(1, numel(r(r/R<res_opt.r_thres))) + theta_opt(1);
 theta = horzcat(theta_root, theta_opt);
 
 % Smoothen out the sharp corner between the two curves
-idx_valid = r<=(r_thres-.05) | r>=(r_thres+.05);
+idx_valid = r/R<=(r_thres-.05) | r/R>=(r_thres+.05);
 r_valid = r(idx_valid);
 theta_valid = theta(idx_valid);
 
@@ -216,9 +217,9 @@ resizeFigure(gcf, 800, 400);
 cla; hold on; grid on;
 plot (r/R, res_opt.alpha_D + rad2deg(.5./r .* sqrt(optimizer.C_T_req)), ...
     LineWidth=lw(1), LineStyle='--', Color='k', DisplayName='Ideal twist');
-plot(r, theta, LineWidth=lw(2)*1.5, LineStyle='-.', Color=cols(2), ...
+plot(r/R, theta, LineWidth=lw(2)*1.5, LineStyle='-.', Color=cols(2), ...
     DisplayName='Raw twist distribution'); 
-plot (r_valid, theta_valid, LineWidth=lw(3)*1.5, LineStyle='-.', Color=cols(3), ...
+plot (r_valid/R, theta_valid, LineWidth=lw(3)*1.5, LineStyle='-.', Color=cols(3), ...
     DisplayName='Filtered twist distribution');
 plot(r/R, squeeze(res_opt.theta), LineWidth=lw(1), LineStyle='-', Color='k', ...
     DisplayName='Final twist distribution')
@@ -233,7 +234,8 @@ xlim(gca, [0, 1]);
 xticks(0:.1:1);
 ylim(gca, [min(res_opt.theta)-1, max(res_opt.theta) + 1]);
 legend('Interpreter', 'latex', 'Location', 'northeast');
-xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
+xline(gca, r_thres, ':', 'LineWidth', 1.2, 'Color', '#1E1E21' ...
+    ,'HandleVisibility','off');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_theta_vs_r.pdf');
@@ -258,7 +260,8 @@ xlabel('$r/R$', 'Interpreter', 'latex');
 set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
 xticks(0:.1:1);
-xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
+xline(gca, r_thres, ':', 'LineWidth', 1.2, 'Color', '#1E1E21' ...
+    ,'HandleVisibility','off');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_dC_T_vs_r.pdf');
@@ -281,7 +284,8 @@ xlabel('$r/R$', 'Interpreter', 'latex');
 set(gca, 'TickLabelInterpreter', 'latex');
 xlim(gca, [0, 1]);
 xticks(0:.1:1);
-xline(gca, r_thres, ':', 'LineWidth', 1, 'Color', '#1E1E21');
+xline(gca, r_thres, ':', 'LineWidth', 1.2, 'Color', '#1E1E21' ...
+    ,'HandleVisibility','off');
 
 if savefigs
     fpath = fullfile(plot_fld, 'T5_dP_vs_r.pdf');
