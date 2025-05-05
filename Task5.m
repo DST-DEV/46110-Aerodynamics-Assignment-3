@@ -3,7 +3,7 @@ clear; clc; close all;
 savefigs = true;
 res_fld = 'results';
 plot_fld = 'plots';
-rerun_opt = true;
+rerun_opt = false;
 
 % Optimization variations
 c_tip = .02:.0025:.09;
@@ -26,7 +26,7 @@ fig_index = 1;
 N_prop = 4;  % Number of propellers
 N_bld = 2;  % Number of blades per rotor
 R = .7;  % Rotor radius [m].
-m_tot = 4.97;  % Total mass of the drone (incl. payload) [kg]
+m_tot = 5.03;  % Total mass of the drone (incl. payload) [kg]
 
 r = 0:.01:R;
 
