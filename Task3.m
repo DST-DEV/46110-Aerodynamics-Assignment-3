@@ -66,7 +66,7 @@ for i = 1:length(n_bat_extra_range)
         T_rotor = T_total / N_prop;  % Thrust per rotor [N]
         
         P_ideal = (T_rotor)^(3/2) / sqrt(2 * rho * A_rotor);  % Ideal power per rotor [W]
-        P_rotor = gamma * P_ideal + P_0 / N_prop;  % Total power per rotor [W]
+        P_rotor = gamma * P_ideal + P_0 ;  % Total power per rotor [W]
         P_tot = N_prop * P_rotor;  % Total power [W]
         
         % Update motor mass based on power requirement
