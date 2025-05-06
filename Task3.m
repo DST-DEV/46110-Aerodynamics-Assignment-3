@@ -107,7 +107,6 @@ text(opt_n_bat_extra + 1, max_flight_time, ...
      'FontSize', 10, 'HorizontalAlignment', 'left');
 
 % Display results
-fprintf('\n=== TASK 3 RESULTS ===\n');
 fprintf('Optimum number of extra batteries: %d\n', opt_n_bat_extra);
 fprintf('Optimum flight time: %.2f minutes\n', max_flight_time);
 
