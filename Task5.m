@@ -329,3 +329,15 @@ while idx < size(contourData, 2)
     % Advance the index
     idx = idx + nPoints + 1;
 end
+
+%% Plot blade 3d
+
+fid = fopen('AG14.txt', 'r');
+    xy_ag14 = fscanf(fid, '%f  %f', [2, Inf]);
+fclose(fid);
+xy_ag14 = xy_ag14';
+
+figure(fig_index);
+fig_index = fig_index + 1;
+resizeFigure(gcf, 800, 400);
+plotBladeSurface(xy_ag14, r, reshape(res_opt.c,1,[]), reshape(res_opt.theta,1,[]))
