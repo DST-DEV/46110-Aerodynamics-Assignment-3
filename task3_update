@@ -83,7 +83,7 @@ m_valid_opt = battery_mass(n_batteries == n_valid_opt);
 n_theo_opt = n_batteries(idx_theo);
 m_theo_opt = battery_mass(idx_theo);
 
-%% SINGLE PLOT: Combined visualization
+%% PLOT: Combined visualization
 figure('Position', [100, 100, 800, 600]);
 plot(n_batteries, flight_time, 'b-', 'LineWidth', 2); hold on;
 
