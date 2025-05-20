@@ -1,0 +1,128 @@
+clear; clc; close all;
+% Constants
+g = 3.728;               % Mars gravity [m/s^2]
+rho = 14e-3;             % Mars air density [kg/m^3]
+gamma = 1.15;            % Correction factor
+C_bat_unit = 10/6;       % Battery capacity [Wh]
+m_bat_unit = 0.047;      % Battery mass [kg]
+max_payload_mass = 2;    % Payload mass limit [kg]
+
+% Load selected drone results
+load('results/T2_res_sel.mat');
+n_bat_original = 20 / C_bat_unit;  % Assume 20 Wh default battery pack
+
+% Drone mass breakdown
+m_bat_orig = res_sel.m_batteries;
+m_mot = res_sel.m_motors;
+m_prop = res_sel.m_propellers;
+m_fuse = res_sel.m_fuselage;
+m_res = 1;  % Reserve structure
+N_prop = res_sel.N_propellers;
+L_bld = res_sel.L_blades;
+A_rotor = pi * L_bld^2;
+
+% Get parameters from loaded result
+P_0_base = res_sel.P_drag;
+N_prop = res_sel.N_propellers;
+N_bld = res_sel.N_blades;
+L_bld = res_sel.L_blades;
+A_rotor = pi * L_bld^2;
+
+% Constants for P_0 calculation from Task 2
+rho_mars = 14e-3;  % Mars air density [kg/m^3]
+C_d0 = 0.02;  % Drag coefficient from Task 2
+
+% Calculate base parameters
+m_base = m_mot + m_prop + m_fuse + m_res + m_bat_orig;
+
+% Get chord length from result (needed for P_0 calculation)
+c = res_sel.L_blades * 0.15;  % Estimate based on Task 2 scaling
+
+% Reference omega (from Task 2)
+omega_ing = 2800 * 2*pi / 60;  % Ingenuity rotational speed [rad/s]
+R_ing = 0.6;  % Propeller radius of Ingenuity [m]
+omega_base = omega_ing * R_ing / L_bld;  % Base rotational speed for current design
+
+%% SIMULATION: 0-120 BATTERIES (single simulation covering both regions)
+n_batteries = 0:120;
+flight_time = zeros(size(n_batteries));
+battery_mass = zeros(size(n_batteries));
+
+for i = 1:length(n_batteries)
+    n_extra = n_batteries(i);
+    m_extra = n_extra * m_bat_unit;
+    m_bat_total = m_bat_orig + m_extra;
+    m_total = m_mot + m_prop + m_fuse + m_res + m_bat_total;
+    
+    % Calculate new omega based on weight change
+    % For hover condition, need thrust = weight, so omega must increase with weight
+    mass_ratio = m_total / m_base;
+    omega = omega_base * sqrt(mass_ratio);  % Angular velocity scales with sqrt(mass) for hover
+    
+    % Calculate P_0 using the proper formula from Task 2
+    P_0 = (1/8) * rho_mars * c * N_bld * C_d0 * omega^3 * L_bld^4;
+    
+    T = m_total * g;
+    T_rotor = T / N_prop;
+    P_rotor = gamma * T_rotor^(3/2) / sqrt(2 * rho * A_rotor) + P_0;
+    P_total = N_prop * P_rotor;
+    E_total = (n_bat_original + n_extra) * C_bat_unit;
+    flight_time(i) = E_total / P_total * 60;  % min
+    battery_mass(i) = m_extra;
+end
+
+% Find max within 2kg constraint
+valid_mask = battery_mass <= max_payload_mass;
+[max_valid_time, idx_valid] = max(flight_time(valid_mask));
+n_valid_opt = n_batteries(valid_mask);
+n_valid_opt = n_valid_opt(idx_valid);
+m_valid_opt = battery_mass(n_batteries == n_valid_opt);
+
+% Find theoretical maximum (regardless of mass constraint)
+[max_theo_time, idx_theo] = max(flight_time);
+n_theo_opt = n_batteries(idx_theo);
+m_theo_opt = battery_mass(idx_theo);
+
+%% SINGLE PLOT: Combined visualization
+figure('Position', [100, 100, 800, 600]);
+plot(n_batteries, flight_time, 'b-', 'LineWidth', 2); hold on;
+
+% Mark the valid maximum (within 2kg)
+plot(n_valid_opt, max_valid_time, 'g*', 'MarkerSize', 12, 'LineWidth', 2);
+
+% Mark the theoretical maximum
+plot(n_theo_opt, max_theo_time, 'r*', 'MarkerSize', 12, 'LineWidth', 2);
+
+% Add a line showing the 2kg mass constraint
+payload_limit_idx = find(battery_mass > max_payload_mass, 1) - 1;
+if ~isempty(payload_limit_idx)
+    xline(n_batteries(payload_limit_idx), '--k', '2kg Limit', 'LineWidth', 1.5);
+end
+
+% Add annotations for key points
+text(n_valid_opt+2, max_valid_time, ...
+    sprintf('Valid Max: %d batteries\n%.2f min (%.2f kg)', ...
+    n_valid_opt, max_valid_time, m_valid_opt), ...
+    'FontSize', 10);
+
+text(n_theo_opt+2, max_theo_time, ...
+    sprintf('Theoretical Max: %d batteries\n%.2f min (%.2f kg)', ...
+    n_theo_opt, max_theo_time, m_theo_opt), ...
+    'FontSize', 10);
+
+% Styling
+xlabel('Number of Extra Batteries', 'FontSize', 12);
+ylabel('Flight Time [min]', 'FontSize', 12);
+title('Mars Drone Flight Time vs. Extra Batteries', 'FontSize', 14);
+legend('Flight Time', 'Max Within 2kg Limit', 'Theoretical Maximum', 'Location', 'southeast');
+grid on;
+xlim([0 120]);
+ylim([min(flight_time) max(flight_time)*1.05]);
+
+%% Print results
+fprintf('Optimum within 2 kg limit: \n');
+fprintf('Valid Max: %d extra batteries\nFlight time: %.2f min\nBattery mass: %.2f kg\n\n', ...
+    n_valid_opt, max_valid_time, m_valid_opt);
+fprintf('Theoretical optimum: \n');
+fprintf('Theoretical Max: %d extra batteries\nFlight time: %.2f min\nBattery mass: %.2f kg\n', ...
+    n_theo_opt, max_theo_time, m_theo_opt);
